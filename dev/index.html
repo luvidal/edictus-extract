@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@jogi/extract</title>
+  <style>
+    :root { color-scheme: light; --bg:#f7f8fa; --panel:#fff; --line:#d7dce2; --text:#17202a; --muted:#657282; --accent:#0f766e; --danger:#b42318; font-family: Inter, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); min-height:100vh; }
+    main { display:grid; grid-template-columns: minmax(320px,420px) 1fr; min-height:100vh; }
+    aside { background:var(--panel); border-right:1px solid var(--line); padding:20px; display:flex; flex-direction:column; gap:16px; }
+    h1 { font-size:20px; margin:0; font-weight:700; }
+    h1 small { color:var(--muted); font-weight:500; font-size:12px; }
+    label { display:grid; gap:6px; font-size:13px; color:var(--muted); font-weight:600; }
+    input, select, button { width:100%; min-height:38px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--text); padding:6px 10px; font:inherit; }
+    button { background:var(--accent); color:#fff; border-color:transparent; cursor:pointer; font-weight:600; }
+    button:disabled { opacity:.6; cursor:wait; }
+    #drop { border:2px dashed var(--line); border-radius:8px; padding:24px; text-align:center; color:var(--muted); }
+    #drop.over { border-color:var(--accent); background:#ecfdf5; color:var(--accent); }
+    section.main { padding:20px; overflow:auto; }
+    pre { background:#fff; border:1px solid var(--line); border-radius:6px; padding:12px; overflow:auto; font-size:12px; white-space:pre-wrap; }
+    .row { padding:12px; border:1px solid var(--line); border-radius:6px; background:#fff; margin-bottom:12px; }
+    .row h3 { margin:0 0 6px; font-size:14px; }
+    .row .meta { color:var(--muted); font-size:12px; margin-bottom:8px; }
+    .err { color:var(--danger); }
+  </style>
+</head>
+<body>
+  <main>
+    <aside>
+      <h1>@jogi/extract <small>playground</small></h1>
+      <label>Doctype
+        <select id="doctype"></select>
+      </label>
+      <label>Model
+        <input id="model" value="gemini-2.5-pro">
+      </label>
+      <div id="drop">Drop a PDF / image here, or click to choose.</div>
+      <input id="file" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" style="display:none">
+      <button id="run" disabled>Extract</button>
+      <p style="font-size:12px;color:var(--muted);margin:0;">Auth: set <code>GEMINI_API_KEY</code> or <code>GOOGLE_CLOUD_PROJECT</code>+<code>GOOGLE_CLOUD_LOCATION</code> in the env that launched the server.</p>
+    </aside>
+    <section class="main">
+      <div id="output"><em style="color:var(--muted);">Results appear here.</em></div>
+    </section>
+  </main>
+
+<script>
+const $ = sel => document.querySelector(sel)
+const drop = $('#drop'), fileIn = $('#file'), doctype = $('#doctype'), model = $('#model'), run = $('#run'), out = $('#output')
+let file = null
+
+async function loadDoctypes() {
+  const r = await fetch('/api/doctypes')
+  const j = await r.json()
+  for (const dt of j.doctypes ?? []) {
+    const opt = document.createElement('option')
+    opt.value = dt.id
+    opt.textContent = `${dt.id}${dt.label ? ` — ${dt.label}` : ''}`
+    doctype.appendChild(opt)
+  }
+}
+loadDoctypes().catch(err => out.innerHTML = `<pre class="err">${err}</pre>`)
+
+drop.addEventListener('click', () => fileIn.click())
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over') })
+drop.addEventListener('dragleave', () => drop.classList.remove('over'))
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); pick(e.dataTransfer.files[0]) })
+fileIn.addEventListener('change', () => pick(fileIn.files[0]))
+
+function pick(f) {
+  if (!f) return
+  file = f
+  drop.textContent = `${f.name} (${(f.size/1024).toFixed(1)} KB)`
+  run.disabled = false
+}
+
+run.addEventListener('click', async () => {
+  if (!file) return
+  run.disabled = true
+  out.innerHTML = `<em style="color:var(--muted);">Extracting…</em>`
+  try {
+    const data = await toBase64(file)
+    const r = await fetch('/api/extract', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ files: [{ name: file.name, type: file.type, data }], doctype: doctype.value, model: model.value }),
+    })
+    const j = await r.json()
+    const row = j.results?.[0]
+    if (!row) { out.innerHTML = `<pre class="err">${JSON.stringify(j, null, 2)}</pre>`; return }
+    if (row.error) {
+      out.innerHTML = `<div class="row"><h3>${row.path}</h3><pre class="err">${row.error}</pre></div>`
+      return
+    }
+    out.innerHTML = `<div class="row">
+      <h3>${row.path}</h3>
+      <div class="meta">${row.doctype} · ${row.durationMs} ms · docdate=${row.docdate ?? '∅'} · tokens=${row.usage?.promptTokens ?? '?'}+${row.usage?.candidatesTokens ?? '?'}</div>
+      <pre>${escape(JSON.stringify({ fields: row.fields, docdate: row.docdate }, null, 2))}</pre>
+    </div>`
+  } catch (err) {
+    out.innerHTML = `<pre class="err">${String(err)}</pre>`
+  } finally {
+    run.disabled = false
+  }
+})
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => resolve(String(fr.result).split(',', 2)[1])
+    fr.onerror = reject
+    fr.readAsDataURL(file)
+  })
+}
+function escape(s) { return s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' })[c]) }
+</script>
+</body>
+</html>
