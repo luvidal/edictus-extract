@@ -1,7 +1,7 @@
 /**
  * @jogi/extract — lean prompt-first single-doctype field extractor.
  *
- * One Gemini call per file, prompt-only contract (no responseSchema), local
+ * One Gemini call per file, responseSchema for flat doctypes, local
  * normalization of the JSON payload. Mirrors @jogi/classifier's host-injected
  * dependency pattern: the host owns Gemini auth and passes an already-
  * authenticated `geminiCall`; this package never reads API keys.
@@ -9,6 +9,7 @@
 
 import { buildExtractPrompt } from './prompt'
 import { normalizeDocdate, normalizeFields, parseJsonLoose, stripFences } from './parse'
+import { buildResponseSchema } from './schema'
 import type {
     Doctype,
     DoctypesMap,
@@ -31,8 +32,10 @@ export type {
     ExtractResult,
     FieldType,
     GeminiCall,
+    ResponseSchema,
 } from './types'
 export { buildExtractPrompt } from './prompt'
+export { buildResponseSchema } from './schema'
 export { parseJsonLoose, normalizeDocdate, normalizeFields, stripFences } from './parse'
 
 const CONFIG_KEY = Symbol.for('@jogi/extract.config')
@@ -100,6 +103,7 @@ export async function extract(
 
     const references = resolveReferences(config, doctype, dt, opts.references)
     const prompt = buildExtractPrompt(doctype, dt, references)
+    const responseSchema = buildResponseSchema(dt)
 
     const r = await config.geminiCall({
         model: opts.model ?? DEFAULT_MODEL,
@@ -116,6 +120,7 @@ export async function extract(
         config: {
             temperature: 0,
             maxOutputTokens: 8192,
+            ...(responseSchema ? { responseSchema } : {}),
             ...(opts.generationConfig ?? {}),
             responseMimeType: 'application/json',
         },

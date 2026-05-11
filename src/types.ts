@@ -7,6 +7,7 @@ export type FieldType =
     | 'time'
     | 'bool'
     | 'list'
+    | 'array'
     | 'obj'
     | 'object'
 
@@ -28,6 +29,14 @@ export interface Doctype {
 }
 
 export type DoctypesMap = Record<string, Doctype>
+
+export type ResponseSchema = {
+    type: 'OBJECT' | 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ARRAY'
+    properties?: Record<string, ResponseSchema>
+    required?: string[]
+    nullable?: boolean
+    items?: ResponseSchema
+}
 
 export interface ExtractedField {
     key: string

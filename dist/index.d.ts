@@ -1,4 +1,4 @@
-type FieldType = 'string' | 'num' | 'number' | 'date' | 'month' | 'time' | 'bool' | 'list' | 'obj' | 'object';
+type FieldType = 'string' | 'num' | 'number' | 'date' | 'month' | 'time' | 'bool' | 'list' | 'array' | 'obj' | 'object';
 interface DoctypeField {
     key: string;
     type?: FieldType | string;
@@ -15,6 +15,13 @@ interface Doctype {
     examples?: unknown[];
 }
 type DoctypesMap = Record<string, Doctype>;
+type ResponseSchema = {
+    type: 'OBJECT' | 'STRING' | 'NUMBER' | 'BOOLEAN' | 'ARRAY';
+    properties?: Record<string, ResponseSchema>;
+    required?: string[];
+    nullable?: boolean;
+    items?: ResponseSchema;
+};
 interface ExtractedField {
     key: string;
     type: string;
@@ -59,6 +66,8 @@ interface ExtractorConfig {
  */
 declare function buildExtractPrompt(doctypeId: string, dt: Doctype, references?: unknown[]): string;
 
+declare function buildResponseSchema(dt: Doctype): ResponseSchema | null;
+
 /**
  * Best-effort JSON parse with brace-matching recovery for truncated outputs.
  * Returns `null` if nothing usable can be parsed.
@@ -71,7 +80,7 @@ declare function normalizeDocdate(v: unknown): string | null;
 /**
  * @jogi/extract — lean prompt-first single-doctype field extractor.
  *
- * One Gemini call per file, prompt-only contract (no responseSchema), local
+ * One Gemini call per file, responseSchema for flat doctypes, local
  * normalization of the JSON payload. Mirrors @jogi/classifier's host-injected
  * dependency pattern: the host owns Gemini auth and passes an already-
  * authenticated `geminiCall`; this package never reads API keys.
@@ -96,4 +105,4 @@ declare function extract(buffer: Buffer, mimetype: string, doctype: string, opts
  */
 declare function extractFields(buffer: Buffer, mimetype: string, doctype: string, opts?: ExtractOptions): Promise<ExtractedField[]>;
 
-export { type Doctype, type DoctypeField, type DoctypesMap, type ExtractOptions, type ExtractResult, type ExtractedField, type ExtractionUsage, type ExtractorConfig, type FieldType, type GeminiCall, buildExtractPrompt, configure, extract, extractFields, getDoctypes, getDoctypesMap, normalizeDocdate, normalizeFields, parseJsonLoose, stripFences };
+export { type Doctype, type DoctypeField, type DoctypesMap, type ExtractOptions, type ExtractResult, type ExtractedField, type ExtractionUsage, type ExtractorConfig, type FieldType, type GeminiCall, type ResponseSchema, buildExtractPrompt, buildResponseSchema, configure, extract, extractFields, getDoctypes, getDoctypesMap, normalizeDocdate, normalizeFields, parseJsonLoose, stripFences };

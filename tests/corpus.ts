@@ -19,7 +19,7 @@ import { GoogleGenAI } from '@google/genai'
 import { configure, extract, type DoctypesMap, type GeminiCall } from '../src/index'
 
 const DOCTYPES_PATH = process.env.JOGI_DOCTYPES || '/Users/avd/GitHub/jogi/data/doctypes.json'
-const FIXTURES_DIR = process.env.FIXTURES_DIR || '/Users/avd/GitHub/jogi/sandbox/claude/dev/fixtures'
+const FIXTURES_DIR = process.env.FIXTURES_DIR || '/Users/avd/GitHub/jogi@extract/out/fixtures'
 
 const args = new Map<string, string>()
 for (let i = 2; i < process.argv.length; i++) {

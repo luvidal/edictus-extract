@@ -160,6 +160,50 @@ function normalizeDocdate(v) {
   return matchOrNull(v, ISO_DATE);
 }
 
+// src/schema.ts
+var NON_FLAT_FIELD_TYPES = /* @__PURE__ */ new Set(["list", "array", "obj", "object"]);
+function fieldSchemaType(type) {
+  switch (type) {
+    case "num":
+    case "number":
+      return "NUMBER";
+    case "bool":
+      return "BOOLEAN";
+    case "string":
+    case "date":
+    case "month":
+    case "time":
+    default:
+      return "STRING";
+  }
+}
+function buildResponseSchema(dt) {
+  if (dt.fields.some((field) => NON_FLAT_FIELD_TYPES.has(field.type ?? "string"))) {
+    return null;
+  }
+  const properties = {};
+  const required = [];
+  for (const field of dt.fields) {
+    properties[field.key] = {
+      type: fieldSchemaType(field.type),
+      nullable: true
+    };
+    required.push(field.key);
+  }
+  return {
+    type: "OBJECT",
+    properties: {
+      data: {
+        type: "OBJECT",
+        properties,
+        required
+      },
+      docdate: { type: "STRING", nullable: true }
+    },
+    required: ["data", "docdate"]
+  };
+}
+
 // src/index.ts
 var CONFIG_KEY = /* @__PURE__ */ Symbol.for("@jogi/extract.config");
 var g = globalThis;
@@ -206,6 +250,7 @@ async function extract(buffer, mimetype, doctype, opts = {}) {
   }
   const references = resolveReferences(config, doctype, dt, opts.references);
   const prompt = buildExtractPrompt(doctype, dt, references);
+  const responseSchema = buildResponseSchema(dt);
   const r = await config.geminiCall({
     model: opts.model ?? DEFAULT_MODEL,
     contents: [{
@@ -221,6 +266,7 @@ async function extract(buffer, mimetype, doctype, opts = {}) {
     config: {
       temperature: 0,
       maxOutputTokens: 8192,
+      ...responseSchema ? { responseSchema } : {},
       ...opts.generationConfig ?? {},
       responseMimeType: "application/json"
     }
@@ -239,6 +285,7 @@ async function extractFields(buffer, mimetype, doctype, opts = {}) {
 }
 
 exports.buildExtractPrompt = buildExtractPrompt;
+exports.buildResponseSchema = buildResponseSchema;
 exports.configure = configure;
 exports.extract = extract;
 exports.extractFields = extractFields;
