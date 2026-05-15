@@ -14,9 +14,18 @@ Lean AI-first single-doctype field extractor satellite for Jogi. One Gemini call
 1. **Two library entry points**: `extract(buffer, mimetype, doctype, opts?) → ExtractResult` and `extractFields(buffer, mimetype, doctype, opts?) → ExtractedField[]`. No classification, no PDF splitting, no boundary detection — the host already classified the file and tells us which doctype to extract.
 2. **Host-injected dependencies**: `configure({ doctypes, geminiCall, references? })` is the only setup. The main app owns Gemini auth and passes an already-authenticated caller; do not add `geminiKey`/`apiKey` config fields, raw API-key handling, or AI SDK runtime deps to `src/`.
 3. **Prompt-only contract**. No `responseSchema` — Vertex AI's structured-output silently drops nested keys not enumerated in `properties`, and doctypes.json does not declare inner row shapes. Gemini Pro is steered entirely by the prompt's per-field `ai` text + optional reference examples; types are coerced post-parse.
-4. **Algorithm is frozen**. Do not add per-page calls, local OCR, PDF slicing, multi-key rotation, or "smart" retries to `src/`. If a doctype consistently mis-extracts, fix the `ai` instruction or `dateHint` in the host's `doctypes.json`, or surface a prompt change for review.
+4. **Algorithm is frozen**. Do not add per-page calls, local OCR, PDF slicing, multi-key rotation, or "smart" retries to `src/`. If a doctype consistently mis-extracts, fix the `ai` instruction or `dateHint` in the host's `doctypes.json`, or surface a prompt change for review. **Scoped exception**: see "Liquidación lexicon" below.
 5. **Runtime deps**: **none**. No `pdf-lib`, no `sharp`, no AWS, no `@google/genai` in `src/`; `@google/genai` is allowed only in manual harnesses/playground.
 6. **Output shape**: `{ doctype, fields: ExtractedField[], docdate: string | null, usage? }`. `fields` is exactly the doctype's `fields` array in declared order, each row coerced to its `type`. Missing fields become `null`. `docdate` is `YYYY-MM-DD` or null.
+
+### Liquidación lexicon
+
+Scoped algorithm exception for `doctype === 'liquidaciones-sueldo'` **only** — every other doctype keeps the frozen-algorithm rule in clause 4.
+
+- Entry point inside `extract()`: after `applyNormalizeBlock(normalizeFields(...), dt.normalize)`, when `doctype === 'liquidaciones-sueldo'`, the helper `rewriteLiquidacionRows` runs `classifyLiquidacionRows({ haberes, descuentos })` and rewrites those two list fields in place with `canonicalId` + `tipoRenta` / `naturaleza` / `legalType`. No other doctype path is touched; the public `ExtractResult` shape is unchanged.
+- Public server-only entry: `classifyLiquidacionRows` exported from `@jogi/extract/liquidacion` (`src/liquidacion/index.ts`) — the same function `extract()` calls internally, exposed so the host's one-shot legacy `ai_fields` backfill can classify rows without re-running Gemini extraction.
+- Browser-safe types subpath: `@jogi/extract/liquidacion/types` (`TipoRenta`, `Naturaleza`, `LegalType`, `ItemType`, `ClassifiedItem`, …). No runtime imports, no `@google/genai` references; safe for client-side Jogi modules to import.
+- Lexicon source: `src/data/liquidacion-lexicon.yaml` (human-edited). The `prebuild` script (`tests/compile-lexicon.ts`, devDep `js-yaml`) compiles it to `src/data/liquidacion-lexicon.generated.ts` — runtime imports the generated TS only. No YAML parser ships in production deps. CI fails if the generated file diverges from the YAML.
 
 ## Code rules
 

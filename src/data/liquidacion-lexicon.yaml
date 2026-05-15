@@ -1,0 +1,438 @@
+# Liquidación-de-sueldo line-item lexicon.
+#
+# Authored here; compiled at build time by `tests/compile-lexicon.ts` (a
+# devDep `js-yaml` consumer wired as `prebuild`) into
+# `liquidacion-lexicon.generated.ts`. Runtime imports the generated TS
+# sibling; this file is never read at runtime. CI fails if the generated
+# file diverges from this YAML.
+#
+# Each item describes a canonical concept, not a string replacement. Aliases
+# cover accented + unaccented forms, common employer abbreviations, and
+# known short forms. The matcher keys on `{ section, normalizeLabel(alias) }`
+# (see `src/normalize.ts`) so accent / case / punctuation variants collapse
+# automatically — we do not need to enumerate every casing.
+#
+# `classification` is allowed only when the concept is stable enough to
+# bypass a Gemini arbiter call. `legalType` is allowed only when
+# `naturaleza === 'Legal'` (validator enforces this).
+
+version: 1
+doctype: liquidaciones-sueldo
+itemTypes:
+  - income
+  - deduction
+
+items:
+  # ---------------------------------------------------------------------------
+  # Income (haberes)
+  # ---------------------------------------------------------------------------
+
+  - id: sueldo_base
+    canonical: Sueldo Base
+    itemType: income
+    aliases:
+      - Sueldo Base
+      - Sueldo
+      - Sueldo Mensual
+      - Sueldo Base Mensual
+      - Remuneración Base
+      - Remuneracion Base
+    classification:
+      naturaleza: Imponible
+      tipoRenta: Fija
+
+  - id: gratificacion
+    canonical: Gratificación
+    itemType: income
+    aliases:
+      - Gratificación
+      - Gratificacion
+      - Gratificación Legal
+      - Gratificacion Legal
+      - Gratificación Mensual
+      - Gratificacion Mensual
+      - Grat. Legal
+      - Grat Legal
+    classification:
+      naturaleza: Imponible
+      tipoRenta: Fija
+
+  - id: colacion
+    canonical: Colación
+    itemType: income
+    aliases:
+      - Colación
+      - Colacion
+      - Asignación Colación
+      - Asignacion Colacion
+      - Asig. Colación
+      - Asig. Colacion
+      - Asig Colacion
+      - Bono Colación
+      - Bono Colacion
+    classification:
+      naturaleza: No imponible
+      tipoRenta: Fija
+
+  - id: movilizacion
+    canonical: Movilización
+    itemType: income
+    aliases:
+      - Movilización
+      - Movilizacion
+      - Asignación Movilización
+      - Asignacion Movilizacion
+      - Asig. Movilización
+      - Asig. Movilizacion
+      - Asig Movilizacion
+      - Bono Movilización
+      - Bono Movilizacion
+    classification:
+      naturaleza: No imponible
+      tipoRenta: Fija
+
+  - id: asignacion_familiar
+    canonical: Asignación Familiar
+    itemType: income
+    aliases:
+      - Asignación Familiar
+      - Asignacion Familiar
+      - Asig. Familiar
+      - Asig Familiar
+      - Asignación Fam.
+      - Asignacion Fam.
+      - Cargas Familiares
+    classification:
+      naturaleza: No imponible
+      tipoRenta: Fija
+
+  - id: asignacion_estudios
+    canonical: Asignación de Estudios
+    itemType: income
+    aliases:
+      - Asignación de Estudios
+      - Asignacion de Estudios
+      - Asignación Estudios
+      - Asignacion Estudios
+      - Asig. Estudios
+      - Asig Estudios
+      - Bono Estudios
+      - Bono de Estudios
+    classification:
+      naturaleza: No imponible
+      tipoRenta: Fija
+
+  - id: viatico
+    canonical: Viático
+    itemType: income
+    aliases:
+      - Viático
+      - Viatico
+      - Viáticos
+      - Viaticos
+      - Asignación Viático
+      - Asignacion Viatico
+    classification:
+      naturaleza: No imponible
+      tipoRenta: Variable
+
+  - id: horas_extras
+    canonical: Horas Extras
+    itemType: income
+    aliases:
+      - Horas Extras
+      - Horas Extra
+      - Hrs. Extras
+      - Hrs Extras
+      - H. Extras
+      - HH.EE.
+      - HH EE
+      - Sobretiempo
+      - Sobre Tiempo
+      - Sobresueldo
+    classification:
+      naturaleza: Imponible
+      tipoRenta: Variable
+
+  - id: comisiones
+    canonical: Comisiones
+    itemType: income
+    aliases:
+      - Comisiones
+      - Comisión
+      - Comision
+      - Comisión de Ventas
+      - Comision de Ventas
+      - Comisiones de Venta
+      - Comisiones Ventas
+    classification:
+      naturaleza: Imponible
+      tipoRenta: Variable
+
+  - id: aguinaldo
+    canonical: Aguinaldo
+    itemType: income
+    aliases:
+      - Aguinaldo
+      - Aguinaldo Fiestas Patrias
+      - Aguinaldo Navidad
+      - Aguinaldo de Fiestas Patrias
+      - Aguinaldo de Navidad
+      - Bono Fiestas Patrias
+      - Bono Navidad
+      - Bono de Navidad
+      - Bono de Fiestas Patrias
+    classification:
+      naturaleza: Imponible
+      tipoRenta: Variable
+
+  - id: vacaciones
+    canonical: Vacaciones
+    itemType: income
+    aliases:
+      - Vacaciones
+      - Feriado Legal
+      - Feriado Anual
+      - Pago Vacaciones
+      - Remuneración Vacaciones
+      - Remuneracion Vacaciones
+    classification:
+      naturaleza: Imponible
+      tipoRenta: Variable
+
+  # Note: `Bono de Producción` is intentionally omitted from the seed. The
+  # plan permits including it only when the concept can be bounded narrowly,
+  # and the integration test at `tests/extractor.test.ts` exercises a
+  # "Bono Producción" label as a deliberately-unclaimed pass-through. Per
+  # the plan's S3 guidance, employer-specific bonuses are routed through the
+  # arbiter (S2) so they are classified individually rather than collapsed
+  # into one canonical — leave it to the arbiter.
+
+  # ---------------------------------------------------------------------------
+  # Deductions (descuentos)
+  # ---------------------------------------------------------------------------
+
+  - id: afp_cotizacion_obligatoria
+    canonical: Cotiz. Previsional Obligatoria
+    itemType: deduction
+    aliases:
+      - AFP
+      - Cotización AFP
+      - Cotizacion AFP
+      - Cotiz. AFP
+      - Cotiz AFP
+      - Cotiz. Previsional Obligatoria
+      - Cotizacion Previsional Obligatoria
+      - Cotización Previsional Obligatoria
+      - Cotiz. Previ. Obligatoria
+      - Cotiz Previ Obligatoria
+      - Cotización Previsional
+      - Cotizacion Previsional
+      - Capitalización Individual
+      - Capitalizacion Individual
+      - AFP Obligatoria
+      - Previsión AFP
+      - Prevision AFP
+    classification:
+      naturaleza: Legal
+      tipoRenta: Fija
+      legalType: afp
+
+  - id: comision_afp
+    canonical: Comisión AFP
+    itemType: deduction
+    # Legal/legalType=afp preserves the legacy reliquidación behavior: the
+    # old renta classifier (CLASSIFY_SCHEMA_VERSION = 4) grouped AFP-labeled
+    # deductions under Legal/afp, and `app/reports/situacion/reliquidacion.ts`
+    # accumulates `Legal + legalType=afp` into `cotizPreviReal`. Changing
+    # this to `Otro` would silently change RF/RV math at cutover — see the
+    # plan's Decisions section.
+    aliases:
+      - Comisión AFP
+      - Comision AFP
+      - Comisión A.F.P.
+      - Comision A.F.P.
+      - Comisión Administradora
+      - Comision Administradora
+      - Comisión Adm. AFP
+      - Comision Adm AFP
+    classification:
+      naturaleza: Legal
+      tipoRenta: Fija
+      legalType: afp
+
+  - id: salud_obligatoria
+    canonical: Cotiz. Salud Obligatoria
+    itemType: deduction
+    aliases:
+      - Salud 7%
+      - Salud 7
+      - Salud Obligatoria
+      - Salud
+      - Cotización Salud
+      - Cotizacion Salud
+      - Cotiz. Salud
+      - Cotiz Salud
+      - Cotiz. Salud Obligatoria
+      - Cotizacion Salud Obligatoria
+      - Cotización Salud Obligatoria
+      - Fonasa
+      - Isapre
+      - Cotización Isapre
+      - Cotizacion Isapre
+    classification:
+      naturaleza: Legal
+      tipoRenta: Fija
+      legalType: salud
+
+  - id: adicional_salud
+    canonical: Adicional Salud
+    itemType: deduction
+    # Voluntary supplemental health (the portion above the legal 7%). Per
+    # plan: classify Otro/Fija, NOT Legal/salud — only the mandatory 7%
+    # is `Legal`. Tests assert `legalType` is undefined here.
+    aliases:
+      - Adicional Salud
+      - Adicional de Salud
+      - Cotización Adicional Salud
+      - Cotizacion Adicional Salud
+      - Cotiz. Adicional Salud
+      - Cotiz Adicional Salud
+      - Salud Adicional
+      - Salud Voluntaria
+      - Cotización Voluntaria Salud
+      - Cotizacion Voluntaria Salud
+      - Pactado Isapre
+      - Adicional Isapre
+    classification:
+      naturaleza: Otro
+      tipoRenta: Fija
+
+  - id: seguro_cesantia
+    canonical: Seguro de Cesantía
+    itemType: deduction
+    # Worker AFC contribution. Plan picks Legal/legalType=afp as the safe
+    # default so it accumulates into `cotizPreviReal` in
+    # `app/reports/situacion/reliquidacion.ts`, matching the legacy
+    # classifier's "afp (AFP, previsión, SIS, invalidez, sobrevivencia,
+    # cesantía)" grouping at CLASSIFY_SCHEMA_VERSION = 4.
+    aliases:
+      - Seguro de Cesantía
+      - Seguro de Cesantia
+      - Seguro Cesantía
+      - Seguro Cesantia
+      - Cesantía
+      - Cesantia
+      - AFC
+      - Cotización AFC
+      - Cotizacion AFC
+      - Cotiz. AFC
+      - Cotiz AFC
+      - Aporte Trabajador AFC
+    classification:
+      naturaleza: Legal
+      tipoRenta: Fija
+      legalType: afp
+
+  - id: impuesto_unico
+    canonical: Impuesto Único
+    itemType: deduction
+    aliases:
+      - Impuesto Único
+      - Impuesto Unico
+      - Impuesto Único de Segunda Categoría
+      - Impuesto Unico de Segunda Categoria
+      - Impuesto 2da Categoría
+      - Impuesto 2da Categoria
+      - Impuesto Segunda Categoría
+      - Impuesto Segunda Categoria
+      - Imp. Único
+      - Imp. Unico
+      - IUSC
+    classification:
+      naturaleza: Legal
+      tipoRenta: Fija
+      legalType: impuesto
+
+  - id: anticipo
+    canonical: Anticipo
+    itemType: deduction
+    aliases:
+      - Anticipo
+      - Anticipos
+      - Anticipo de Sueldo
+      - Anticipo Sueldo
+      - Anticipo Quincenal
+      - Anticipo Remuneración
+      - Anticipo Remuneracion
+    classification:
+      naturaleza: Otro
+      tipoRenta: Variable
+
+  - id: prestamo_empresa
+    canonical: Préstamo Empresa
+    itemType: deduction
+    aliases:
+      - Préstamo Empresa
+      - Prestamo Empresa
+      - Préstamo de Empresa
+      - Prestamo de Empresa
+      - Préstamo
+      - Prestamo
+      - Préstamo Empleador
+      - Prestamo Empleador
+      - Cuota Préstamo
+      - Cuota Prestamo
+      - Descuento Préstamo
+      - Descuento Prestamo
+    classification:
+      naturaleza: Otro
+      tipoRenta: Variable
+
+  - id: caja_compensacion
+    canonical: Caja de Compensación
+    itemType: deduction
+    aliases:
+      - Caja de Compensación
+      - Caja de Compensacion
+      - Caja Compensación
+      - Caja Compensacion
+      - C.C.A.F.
+      - CCAF
+      - Cuota CCAF
+      - Aporte CCAF
+      - Descuento CCAF
+    classification:
+      naturaleza: Otro
+      tipoRenta: Fija
+
+  - id: cuota_sindical
+    canonical: Cuota Sindical
+    itemType: deduction
+    aliases:
+      - Cuota Sindical
+      - Cuota Sindicato
+      - Sindicato
+      - Aporte Sindical
+      - Descuento Sindical
+      - Descuento Sindicato
+    classification:
+      naturaleza: Otro
+      tipoRenta: Fija
+
+  - id: seguro_complementario
+    canonical: Seguro Complementario
+    itemType: deduction
+    aliases:
+      - Seguro Complementario
+      - Seguro Complementario de Salud
+      - Seguro Complementario Salud
+      - Seguro de Salud Complementario
+      - Seguro Colectivo
+      - Seguro Colectivo de Salud
+      - Seguro Colectivo Salud
+      - Seguro Vida
+      - Seguro de Vida
+    classification:
+      naturaleza: Otro
+      tipoRenta: Fija

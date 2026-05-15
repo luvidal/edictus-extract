@@ -40,6 +40,7 @@ export { parseJsonLoose, normalizeDocdate, normalizeFields, stripFences } from '
 export { resolveLabel, normalizeLabel, stripParametricTail, validateNormalizeConfig, applyNormalizeBlock } from './normalize'
 export type { NormalizeRule, NormalizeFieldConfig, NormalizedLabel } from './normalize'
 import { applyNormalizeBlock, validateNormalizeConfig } from './normalize'
+import { classifyLiquidacionRows } from './liquidacion/lexicon'
 
 const CONFIG_KEY = Symbol.for('@jogi/extract.config')
 const g = globalThis as unknown as Record<symbol, ExtractorConfig | undefined>
@@ -140,9 +141,46 @@ export async function extract(
 
     const data = (parsed.data ?? parsed) as Record<string, unknown> | null
     const docdate = normalizeDocdate(parsed.docdate)
-    const fields = applyNormalizeBlock(normalizeFields(dt.fields, data), dt.normalize)
+    let fields = applyNormalizeBlock(normalizeFields(dt.fields, data), dt.normalize)
+
+    // Liquidación-de-sueldo only: rewrite haberes/descuentos rows in place
+    // with canonicalId + classification (tipoRenta / naturaleza / legalType).
+    // Scoped algorithm exception per CLAUDE.md → Contract → Liquidación lexicon.
+    // No other doctype path runs this branch.
+    if (doctype === 'liquidaciones-sueldo') {
+        fields = await rewriteLiquidacionRows(fields)
+    }
 
     return { doctype, fields, docdate, usage: geminiUsage(r) }
+}
+
+/**
+ * Internal helper — rewrites `haberes` / `descuentos` list fields with the
+ * lexicon-matched rows. Non-array values and unrecognized row shapes pass
+ * through untouched; the public `ExtractResult` shape is unchanged.
+ */
+async function rewriteLiquidacionRows(fields: ExtractedField[]): Promise<ExtractedField[]> {
+    const haberesField = fields.find(f => f.key === 'haberes')
+    const descuentosField = fields.find(f => f.key === 'descuentos')
+    const toRows = (v: unknown): Array<{ label: string; value: number }> => {
+        if (!Array.isArray(v)) return []
+        return v
+            .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object' && !Array.isArray(r))
+            .map(r => ({
+                label: typeof r.label === 'string' ? r.label : '',
+                value: typeof r.value === 'number' ? r.value : 0,
+            }))
+            .filter(r => r.label.length > 0)
+    }
+    const classified = await classifyLiquidacionRows({
+        haberes: toRows(haberesField?.value),
+        descuentos: toRows(descuentosField?.value),
+    })
+    return fields.map(f => {
+        if (f.key === 'haberes' && Array.isArray(f.value)) return { ...f, value: classified.haberes }
+        if (f.key === 'descuentos' && Array.isArray(f.value)) return { ...f, value: classified.descuentos }
+        return f
+    })
 }
 
 /**
