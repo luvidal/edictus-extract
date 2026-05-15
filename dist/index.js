@@ -204,6 +204,37 @@ function buildResponseSchema(dt) {
   };
 }
 
+// src/normalize.ts
+var stripParametricTail = (label) => label.replace(/\s*\([^)]*\)\s*$/, "").replace(/\s*:\s*[\d.,]+\s*[A-Za-z%]{0,3}\s*$/, "").replace(/[:\s]+$/, "").trim();
+var stripAccents = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+var normalizeLabel = (label, stripParametric = false) => {
+  const stripped = stripParametric ? stripParametricTail(label) : label;
+  return stripAccents(stripped.toLowerCase()).replace(/[^\w\s%]/g, " ").replace(/\s+/g, " ").trim();
+};
+var resolveLabel = (rawLabel, config = {}) => {
+  const stripParametric = config.stripParametric === true;
+  const key = normalizeLabel(rawLabel, stripParametric);
+  for (const rule of config.synonyms ?? []) {
+    if (new RegExp(rule.match).test(key)) {
+      return { key: normalizeLabel(rule.canonical, false), display: rule.canonical };
+    }
+  }
+  const display = stripParametric ? stripParametricTail(rawLabel) : rawLabel;
+  return { key, display };
+};
+var validateNormalizeConfig = (block) => {
+  if (!block) return;
+  for (const [field, cfg] of Object.entries(block)) {
+    for (const rule of cfg.synonyms ?? []) {
+      if (!rule.match.startsWith("^") || !rule.match.endsWith("$")) {
+        throw new Error(
+          `@jogi/extract: normalize rule for "${field}" is not anchored: ${rule.match}`
+        );
+      }
+    }
+  }
+};
+
 // src/index.ts
 var CONFIG_KEY = /* @__PURE__ */ Symbol.for("@jogi/extract.config");
 var g = globalThis;
@@ -293,7 +324,11 @@ exports.getDoctypes = getDoctypes;
 exports.getDoctypesMap = getDoctypesMap;
 exports.normalizeDocdate = normalizeDocdate;
 exports.normalizeFields = normalizeFields;
+exports.normalizeLabel = normalizeLabel;
 exports.parseJsonLoose = parseJsonLoose;
+exports.resolveLabel = resolveLabel;
 exports.stripFences = stripFences;
+exports.stripParametricTail = stripParametricTail;
+exports.validateNormalizeConfig = validateNormalizeConfig;
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

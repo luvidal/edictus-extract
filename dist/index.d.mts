@@ -78,6 +78,60 @@ declare function normalizeFields(fields: DoctypeField[], data: Record<string, un
 declare function normalizeDocdate(v: unknown): string | null;
 
 /**
+ * Label normalization — two-job pipeline.
+ *
+ * Job 1 (generic, in code): strip parametric tails, lowercase, accent-fold,
+ * collapse punctuation/whitespace. Doctype-agnostic, runs on every targeted
+ * field.
+ *
+ * Job 2 (synonym resolution, from doctypes.json config): an ordered list of
+ * `{match, canonical}` rules evaluated against the Job-1 output. All patterns
+ * MUST be anchored (`^…$`); first match wins. A label that matches no rule
+ * passes through with only Job-1 cleanup applied.
+ *
+ * Replaces the consumer-side stop-gap at
+ * `app/reports/situacion/helpers/synonyms.ts` — same behavior, now owned by
+ * the satellite.
+ */
+interface NormalizeRule {
+    /** Regex pattern (string) run against the Job-1-normalized label. MUST be anchored. */
+    match: string;
+    /** Display string — properly cased + accented; becomes the row label downstream. */
+    canonical: string;
+}
+interface NormalizeFieldConfig {
+    /** If true, strip parametric tails before lowercasing/accent-folding. Default: false. */
+    stripParametric?: boolean;
+    /** Ordered synonym list, evaluated top-to-bottom on the Job-1-normalized label. */
+    synonyms?: NormalizeRule[];
+}
+interface NormalizedLabel {
+    /** Normalized form — used as the downstream dedup/grouping key. */
+    key: string;
+    /** Display label — the matched canonical, or the original-cased stripped label. */
+    display: string;
+}
+/** Trailing `(…)` parenthetical, `:N UNIT` suffix, trailing colons/whitespace. */
+declare const stripParametricTail: (label: string) => string;
+/**
+ * Job 1 — generic cleanup. Lowercase, accent-fold, drop punctuation (so
+ * `Cotiz.` and `Cotiz` collapse), collapse whitespace. Optionally strips the
+ * parametric tail first.
+ */
+declare const normalizeLabel: (label: string, stripParametric?: boolean) => string;
+/**
+ * Resolve a raw label against a `NormalizeFieldConfig`. Returns the dedup key
+ * + the display string. Pass-through when no synonym matches: key = Job-1
+ * normalized, display = parametric-stripped (cased preserved) raw label.
+ */
+declare const resolveLabel: (rawLabel: string, config?: NormalizeFieldConfig) => NormalizedLabel;
+/**
+ * Throws if any `match` pattern in any field config is unanchored. Use at
+ * config-load time (tests at minimum) to enforce the plan's anchoring rule.
+ */
+declare const validateNormalizeConfig: (block: Record<string, NormalizeFieldConfig> | null | undefined) => void;
+
+/**
  * @jogi/extract — lean prompt-first single-doctype field extractor.
  *
  * One Gemini call per file, responseSchema for flat doctypes, local
@@ -105,4 +159,4 @@ declare function extract(buffer: Buffer, mimetype: string, doctype: string, opts
  */
 declare function extractFields(buffer: Buffer, mimetype: string, doctype: string, opts?: ExtractOptions): Promise<ExtractedField[]>;
 
-export { type Doctype, type DoctypeField, type DoctypesMap, type ExtractOptions, type ExtractResult, type ExtractedField, type ExtractionUsage, type ExtractorConfig, type FieldType, type GeminiCall, type ResponseSchema, buildExtractPrompt, buildResponseSchema, configure, extract, extractFields, getDoctypes, getDoctypesMap, normalizeDocdate, normalizeFields, parseJsonLoose, stripFences };
+export { type Doctype, type DoctypeField, type DoctypesMap, type ExtractOptions, type ExtractResult, type ExtractedField, type ExtractionUsage, type ExtractorConfig, type FieldType, type GeminiCall, type NormalizeFieldConfig, type NormalizeRule, type NormalizedLabel, type ResponseSchema, buildExtractPrompt, buildResponseSchema, configure, extract, extractFields, getDoctypes, getDoctypesMap, normalizeDocdate, normalizeFields, normalizeLabel, parseJsonLoose, resolveLabel, stripFences, stripParametricTail, validateNormalizeConfig };

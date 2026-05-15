@@ -37,6 +37,8 @@ export type {
 export { buildExtractPrompt } from './prompt'
 export { buildResponseSchema } from './schema'
 export { parseJsonLoose, normalizeDocdate, normalizeFields, stripFences } from './parse'
+export { resolveLabel, normalizeLabel, stripParametricTail, validateNormalizeConfig } from './normalize'
+export type { NormalizeRule, NormalizeFieldConfig, NormalizedLabel } from './normalize'
 
 const CONFIG_KEY = Symbol.for('@jogi/extract.config')
 const g = globalThis as unknown as Record<symbol, ExtractorConfig | undefined>
