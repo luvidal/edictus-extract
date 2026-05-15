@@ -1,0 +1,1 @@
+export { N as NormalizeFieldConfig, g as NormalizeRule, h as NormalizedLabel, i as applyNormalizeBlock, n as normalizeLabel, r as resolveLabel, s as stripParametricTail, v as validateNormalizeConfig } from './types-D3pLcgah.js';

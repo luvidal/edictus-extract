@@ -10,8 +10,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./normalize": {
+      "types": "./dist/normalize.d.ts",
+      "import": "./dist/normalize.mjs",
+      "require": "./dist/normalize.js"
     }
   },
+  "sideEffects": false,
   "files": [
     "dist"
   ],
