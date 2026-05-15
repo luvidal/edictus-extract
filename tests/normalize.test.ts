@@ -13,8 +13,11 @@ import {
     normalizeLabel,
     stripParametricTail,
     validateNormalizeConfig,
+    applyNormalizeBlock,
     type NormalizeFieldConfig,
 } from '../src/normalize'
+import { configure, type DoctypesMap, type GeminiCall } from '../src/index'
+import type { ExtractedField } from '../src/types'
 
 const LIQUIDACION_HABERES: NormalizeFieldConfig = {
     stripParametric: true,
@@ -176,5 +179,168 @@ describe('validateNormalizeConfig — anchoring enforcement', () => {
     it('no-ops when the block is null or undefined', () => {
         expect(() => validateNormalizeConfig(null)).not.toThrow()
         expect(() => validateNormalizeConfig(undefined)).not.toThrow()
+    })
+})
+
+describe('applyNormalizeBlock — wiring fields → normalized labels', () => {
+    const baseFields = (): ExtractedField[] => [
+        {
+            key: 'haberes',
+            type: 'list',
+            value: [
+                { label: 'Asignación Colación', value: 50000 },
+                { label: 'Asignación Movilización', value: 30000 },
+                { label: 'Bono Producción (Bruto: 1.500.000)', value: 1500000 },
+            ],
+        },
+        {
+            key: 'descuentos',
+            type: 'list',
+            value: [
+                { label: 'Salud 7%', value: 100000 },
+                { label: 'Impuesto Unico: (Base: $15.616.008)', value: 250000 },
+            ],
+        },
+        { key: 'rut', type: 'string', value: '1-9' },
+    ]
+
+    const block: Record<string, NormalizeFieldConfig> = {
+        'haberes[].label': {
+            stripParametric: true,
+            synonyms: [
+                { match: '^asignacion colacion$', canonical: 'Colación' },
+                { match: '^asignacion movilizacion$', canonical: 'Movilización' },
+            ],
+        },
+        'descuentos[].label': {
+            stripParametric: true,
+            synonyms: [
+                { match: '^salud\\s*7\\s*%$', canonical: 'Cotiz. Salud Obligatoria' },
+                { match: '^impuesto unico$', canonical: 'Impuesto Único' },
+            ],
+        },
+    }
+
+    it('rewrites a row label in a list-type field', () => {
+        const out = applyNormalizeBlock(baseFields(), block)
+        const haberes = out.find(f => f.key === 'haberes')?.value as Array<Record<string, unknown>>
+        expect(haberes[0].label).toBe('Colación')
+    })
+
+    it('rewrites every matching row in the same list', () => {
+        const out = applyNormalizeBlock(baseFields(), block)
+        const haberes = out.find(f => f.key === 'haberes')?.value as Array<Record<string, unknown>>
+        expect(haberes.map(r => r.label)).toEqual([
+            'Colación',
+            'Movilización',
+            'Bono Producción', // unknown → Job-1 only, parametric tail stripped
+        ])
+    })
+
+    it('handles multiple paths in the same block (haberes + descuentos)', () => {
+        const out = applyNormalizeBlock(baseFields(), block)
+        const descuentos = out.find(f => f.key === 'descuentos')?.value as Array<Record<string, unknown>>
+        expect(descuentos.map(r => r.label)).toEqual([
+            'Cotiz. Salud Obligatoria',
+            'Impuesto Único',
+        ])
+    })
+
+    it('returns input untouched when the block is missing', () => {
+        const fields = baseFields()
+        const out = applyNormalizeBlock(fields, undefined)
+        expect(out).toBe(fields)
+    })
+
+    it('returns input untouched when the block is empty', () => {
+        const fields = baseFields()
+        const out = applyNormalizeBlock(fields, {})
+        expect(out).toBe(fields)
+    })
+
+    it('passes a row missing the label property through unchanged', () => {
+        const fields: ExtractedField[] = [{
+            key: 'haberes',
+            type: 'list',
+            value: [
+                { label: 'Asignación Colación', value: 50000 },
+                { value: 999 }, // no label
+                { label: 42, value: 1 }, // non-string label
+                null,            // null row
+                'string-row',    // primitive row
+            ],
+        }]
+        const out = applyNormalizeBlock(fields, block)
+        const rows = out[0].value as unknown[]
+        expect((rows[0] as Record<string, unknown>).label).toBe('Colación')
+        expect(rows[1]).toEqual({ value: 999 })
+        expect(rows[2]).toEqual({ label: 42, value: 1 })
+        expect(rows[3]).toBeNull()
+        expect(rows[4]).toBe('string-row')
+    })
+
+    it('does not mutate input fields or rows', () => {
+        const fields = baseFields()
+        const before = JSON.parse(JSON.stringify(fields))
+        applyNormalizeBlock(fields, block)
+        expect(fields).toEqual(before)
+    })
+
+    it('rewrites a scalar string value when the path has no `[]`', () => {
+        const fields: ExtractedField[] = [
+            { key: 'tipo', type: 'string', value: 'Asignación Colación' },
+        ]
+        const out = applyNormalizeBlock(fields, {
+            tipo: {
+                synonyms: [{ match: '^asignacion colacion$', canonical: 'Colación' }],
+            },
+        })
+        expect(out[0].value).toBe('Colación')
+    })
+
+    it('rejects unsupported path syntax', () => {
+        const fields = baseFields()
+        expect(() => applyNormalizeBlock(fields, {
+            'haberes[0].label': { synonyms: [] }, // index, not `[]`
+        })).toThrow(/unsupported normalize path/)
+    })
+})
+
+describe('configure() — runs validateNormalizeConfig over all doctypes', () => {
+    const noopGemini: GeminiCall = async () => ({ text: '{}' })
+
+    it('accepts doctypes with no normalize block (existing fixtures)', () => {
+        const doctypes: DoctypesMap = {
+            'cedula-identidad': { fields: [{ key: 'rut', type: 'string' }] },
+        }
+        expect(() => configure({ doctypes, geminiCall: noopGemini })).not.toThrow()
+    })
+
+    it('accepts an anchored normalize block', () => {
+        const doctypes: DoctypesMap = {
+            'liquidaciones-sueldo': {
+                fields: [{ key: 'haberes', type: 'list' }],
+                normalize: {
+                    'haberes[].label': {
+                        synonyms: [{ match: '^asignacion colacion$', canonical: 'Colación' }],
+                    },
+                },
+            },
+        }
+        expect(() => configure({ doctypes, geminiCall: noopGemini })).not.toThrow()
+    })
+
+    it('throws at configure-time when any normalize rule is unanchored', () => {
+        const doctypes: DoctypesMap = {
+            'liquidaciones-sueldo': {
+                fields: [{ key: 'haberes', type: 'list' }],
+                normalize: {
+                    'haberes[].label': {
+                        synonyms: [{ match: 'asignacion colacion', canonical: 'Colación' }],
+                    },
+                },
+            },
+        }
+        expect(() => configure({ doctypes, geminiCall: noopGemini })).toThrow(/not anchored/)
     })
 })

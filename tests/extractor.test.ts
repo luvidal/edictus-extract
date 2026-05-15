@@ -260,6 +260,53 @@ describe('references slot (few-shot)', () => {
     })
 })
 
+describe('extract — normalize block applied to list-row labels', () => {
+    it('rewrites haberes[].label / descuentos[].label via doctype.normalize', async () => {
+        const dt: DoctypesMap = {
+            'liquidaciones-sueldo': {
+                ...DOCTYPES['liquidaciones-sueldo'],
+                normalize: {
+                    'haberes[].label': {
+                        stripParametric: true,
+                        synonyms: [
+                            { match: '^asignacion colacion$', canonical: 'Colación' },
+                        ],
+                    },
+                    'descuentos[].label': {
+                        stripParametric: true,
+                        synonyms: [
+                            { match: '^salud\\s*7\\s*%$', canonical: 'Cotiz. Salud Obligatoria' },
+                        ],
+                    },
+                },
+            },
+        }
+        configure({
+            doctypes: dt,
+            geminiCall: stubGemini({
+                data: {
+                    empleador: 'Acme',
+                    rut: '1',
+                    periodo: '2024-06',
+                    base_imponible: 100,
+                    haberes: [
+                        { label: 'Asignación Colación', value: 50000 },
+                        { label: 'Bono Producción (Bruto: 1.500.000)', value: 1500000 },
+                    ],
+                    descuentos: [
+                        { label: 'Salud 7%', value: 100000 },
+                    ],
+                },
+            }),
+        })
+        const r = await extract(Buffer.from('x'), 'application/pdf', 'liquidaciones-sueldo')
+        const haberes = r.fields.find(f => f.key === 'haberes')?.value as Array<Record<string, unknown>>
+        const descuentos = r.fields.find(f => f.key === 'descuentos')?.value as Array<Record<string, unknown>>
+        expect(haberes.map(r => r.label)).toEqual(['Colación', 'Bono Producción'])
+        expect(descuentos.map(r => r.label)).toEqual(['Cotiz. Salud Obligatoria'])
+    })
+})
+
 describe('parseJsonLoose + normalizeDocdate (exported helpers)', () => {
     it('parseJsonLoose recovers a fenced object with surrounding text', () => {
         const r = parseJsonLoose('garbage ```json\n{"a":1}\n``` more garbage')

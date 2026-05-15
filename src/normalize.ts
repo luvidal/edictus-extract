@@ -98,3 +98,72 @@ export const validateNormalizeConfig = (
         }
     }
 }
+
+/**
+ * Parse a normalize-block path key. Supported forms:
+ *   - `"<fieldKey>"`             → scalar string on that field.
+ *   - `"<fieldKey>[].<rowKey>"`  → row-property in a list-typed field.
+ *
+ * Anything else throws.
+ */
+interface ParsedPath {
+    fieldKey: string
+    rowKey: string | null
+}
+
+const parsePath = (path: string): ParsedPath => {
+    const listMatch = path.match(/^([^[.\]]+)\[\]\.([^[.\]]+)$/)
+    if (listMatch) return { fieldKey: listMatch[1], rowKey: listMatch[2] }
+    if (/^[^[.\]]+$/.test(path)) return { fieldKey: path, rowKey: null }
+    throw new Error(
+        `@jogi/extract: unsupported normalize path "${path}" — expected "<field>" or "<field>[].<rowKey>"`,
+    )
+}
+
+/**
+ * Apply a doctype's `normalize` block to a freshly-coerced `ExtractedField[]`
+ * (from `normalizeFields()`). Returns a new array; does NOT mutate input or
+ * nested rows.
+ *
+ * - Skip silently if the doctype has no `normalize` block.
+ * - For scalar paths, rewrite the field's string `value`.
+ * - For `<field>[].<rowKey>` paths, walk the list `value` and rewrite each
+ *   row's `rowKey` property when it is a string. Rows that are not plain
+ *   objects, or that are missing the property, pass through unchanged — the
+ *   AI sometimes returns short rows and the rest of the pipeline is tolerant.
+ */
+export const applyNormalizeBlock = (
+    fields: import('./types').ExtractedField[],
+    block: Record<string, NormalizeFieldConfig> | null | undefined,
+): import('./types').ExtractedField[] => {
+    if (!block || Object.keys(block).length === 0) return fields
+
+    // Group paths by target field so we touch each field at most once.
+    const byField = new Map<string, Array<{ rowKey: string | null; cfg: NormalizeFieldConfig }>>()
+    for (const [path, cfg] of Object.entries(block)) {
+        const { fieldKey, rowKey } = parsePath(path)
+        const bucket = byField.get(fieldKey) ?? []
+        bucket.push({ rowKey, cfg })
+        byField.set(fieldKey, bucket)
+    }
+
+    return fields.map(f => {
+        const entries = byField.get(f.key)
+        if (!entries) return f
+        let value: unknown = f.value
+        for (const { rowKey, cfg } of entries) {
+            if (rowKey === null) {
+                if (typeof value === 'string') value = resolveLabel(value, cfg).display
+            } else if (Array.isArray(value)) {
+                value = value.map(row => {
+                    if (!row || typeof row !== 'object' || Array.isArray(row)) return row
+                    const r = row as Record<string, unknown>
+                    const raw = r[rowKey]
+                    if (typeof raw !== 'string') return row
+                    return { ...r, [rowKey]: resolveLabel(raw, cfg).display }
+                })
+            }
+        }
+        return { ...f, value }
+    })
+}

@@ -26,6 +26,19 @@ export interface Doctype {
     fields: DoctypeField[]
     /** Optional in-doctype few-shot examples used as reference output style. */
     examples?: unknown[]
+    /**
+     * Optional per-field label-normalization map.
+     *
+     * Keys use a path-like syntax with two supported forms only:
+     *   - `"<fieldKey>"`            — apply to the scalar string value of that field.
+     *   - `"<fieldKey>[].<rowKey>"` — for a `list`-type field, apply to each row's
+     *                                 `<rowKey>` string property.
+     *
+     * Anything else is a config error and rejected by `validateNormalizeConfig`.
+     * Type is `Record<string, NormalizeFieldConfig>` but we leave it loose here
+     * to avoid a circular import; the `normalize` module owns the value shape.
+     */
+    normalize?: Record<string, import('./normalize').NormalizeFieldConfig>
 }
 
 export type DoctypesMap = Record<string, Doctype>

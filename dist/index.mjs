@@ -232,11 +232,49 @@ var validateNormalizeConfig = (block) => {
     }
   }
 };
+var parsePath = (path) => {
+  const listMatch = path.match(/^([^[.\]]+)\[\]\.([^[.\]]+)$/);
+  if (listMatch) return { fieldKey: listMatch[1], rowKey: listMatch[2] };
+  if (/^[^[.\]]+$/.test(path)) return { fieldKey: path, rowKey: null };
+  throw new Error(
+    `@jogi/extract: unsupported normalize path "${path}" \u2014 expected "<field>" or "<field>[].<rowKey>"`
+  );
+};
+var applyNormalizeBlock = (fields, block) => {
+  if (!block || Object.keys(block).length === 0) return fields;
+  const byField = /* @__PURE__ */ new Map();
+  for (const [path, cfg] of Object.entries(block)) {
+    const { fieldKey, rowKey } = parsePath(path);
+    const bucket = byField.get(fieldKey) ?? [];
+    bucket.push({ rowKey, cfg });
+    byField.set(fieldKey, bucket);
+  }
+  return fields.map((f) => {
+    const entries = byField.get(f.key);
+    if (!entries) return f;
+    let value = f.value;
+    for (const { rowKey, cfg } of entries) {
+      if (rowKey === null) {
+        if (typeof value === "string") value = resolveLabel(value, cfg).display;
+      } else if (Array.isArray(value)) {
+        value = value.map((row) => {
+          if (!row || typeof row !== "object" || Array.isArray(row)) return row;
+          const r = row;
+          const raw = r[rowKey];
+          if (typeof raw !== "string") return row;
+          return { ...r, [rowKey]: resolveLabel(raw, cfg).display };
+        });
+      }
+    }
+    return { ...f, value };
+  });
+};
 
 // src/index.ts
 var CONFIG_KEY = /* @__PURE__ */ Symbol.for("@jogi/extract.config");
 var g = globalThis;
 function configure(c) {
+  for (const dt of Object.values(c.doctypes)) validateNormalizeConfig(dt.normalize);
   g[CONFIG_KEY] = c;
 }
 function getConfig() {
@@ -305,7 +343,7 @@ async function extract(buffer, mimetype, doctype, opts = {}) {
   if (!parsed) throw new Error("@jogi/extract: Gemini response was not valid JSON");
   const data = parsed.data ?? parsed;
   const docdate = normalizeDocdate(parsed.docdate);
-  const fields = normalizeFields(dt.fields, data);
+  const fields = applyNormalizeBlock(normalizeFields(dt.fields, data), dt.normalize);
   return { doctype, fields, docdate, usage: geminiUsage(r) };
 }
 async function extractFields(buffer, mimetype, doctype, opts = {}) {
@@ -313,6 +351,6 @@ async function extractFields(buffer, mimetype, doctype, opts = {}) {
   return r.fields;
 }
 
-export { buildExtractPrompt, buildResponseSchema, configure, extract, extractFields, getDoctypes, getDoctypesMap, normalizeDocdate, normalizeFields, normalizeLabel, parseJsonLoose, resolveLabel, stripFences, stripParametricTail, validateNormalizeConfig };
+export { applyNormalizeBlock, buildExtractPrompt, buildResponseSchema, configure, extract, extractFields, getDoctypes, getDoctypesMap, normalizeDocdate, normalizeFields, normalizeLabel, parseJsonLoose, resolveLabel, stripFences, stripParametricTail, validateNormalizeConfig };
 //# sourceMappingURL=index.mjs.map
 //# sourceMappingURL=index.mjs.map

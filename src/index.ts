@@ -37,13 +37,19 @@ export type {
 export { buildExtractPrompt } from './prompt'
 export { buildResponseSchema } from './schema'
 export { parseJsonLoose, normalizeDocdate, normalizeFields, stripFences } from './parse'
-export { resolveLabel, normalizeLabel, stripParametricTail, validateNormalizeConfig } from './normalize'
+export { resolveLabel, normalizeLabel, stripParametricTail, validateNormalizeConfig, applyNormalizeBlock } from './normalize'
 export type { NormalizeRule, NormalizeFieldConfig, NormalizedLabel } from './normalize'
+import { applyNormalizeBlock, validateNormalizeConfig } from './normalize'
 
 const CONFIG_KEY = Symbol.for('@jogi/extract.config')
 const g = globalThis as unknown as Record<symbol, ExtractorConfig | undefined>
 
-export function configure(c: ExtractorConfig): void { g[CONFIG_KEY] = c }
+export function configure(c: ExtractorConfig): void {
+    // Fail fast on malformed normalize blocks (unanchored regex) before any
+    // extraction call exercises them. No-ops when no doctype declares one.
+    for (const dt of Object.values(c.doctypes)) validateNormalizeConfig(dt.normalize)
+    g[CONFIG_KEY] = c
+}
 
 function getConfig(): ExtractorConfig {
     const c = g[CONFIG_KEY]
@@ -134,7 +140,7 @@ export async function extract(
 
     const data = (parsed.data ?? parsed) as Record<string, unknown> | null
     const docdate = normalizeDocdate(parsed.docdate)
-    const fields = normalizeFields(dt.fields, data)
+    const fields = applyNormalizeBlock(normalizeFields(dt.fields, data), dt.normalize)
 
     return { doctype, fields, docdate, usage: geminiUsage(r) }
 }
