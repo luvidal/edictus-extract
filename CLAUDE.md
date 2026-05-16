@@ -27,6 +27,7 @@ Scoped algorithm exception for `doctype === 'liquidaciones-sueldo'` **only** —
 - Browser-safe types subpath: `@jogi/extract/liquidacion/types` (`TipoRenta`, `Naturaleza`, `LegalType`, `ItemType`, `ClassifiedItem`, …). No runtime imports, no `@google/genai` references; safe for client-side Jogi modules to import.
 - Browser-safe alias resolver: `@jogi/extract/liquidacion/resolve` exports `resolveLabelToCanonicalId(label, itemType)` — pure-data lookup against the same alias index the deterministic matcher uses. Hosts call this to bridge legacy stored labels (e.g. `"AFP"`) to canonical row ids (`afp_cotizacion_obligatoria`) without running classification. No Gemini SDK, no Node-only modules.
 - Lexicon source: `src/data/liquidacion-lexicon.yaml` (human-edited). The `prebuild` script (`tests/compile-lexicon.ts`, devDep `js-yaml`) compiles it to `src/data/liquidacion-lexicon.generated.ts` — runtime imports the generated TS only. No YAML parser ships in production deps. CI fails if the generated file diverges from the YAML.
+- Alias matching checks strict normalized labels, parametric-stripped labels, and narrow AFP-commission decorations; collision losers keep the raw label with `canonicalId: null` and full classification so host raw-label fallback keying cannot drop values.
 
 ## Code rules
 

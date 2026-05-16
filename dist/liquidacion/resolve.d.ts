@@ -17,14 +17,22 @@ type AliasIndex = Record<ItemType, Map<string, LexiconItem>>;
  *  same construction; first-wins on duplicate aliases within an itemType. */
 declare function buildAliasIndex(lexicon: Lexicon): AliasIndex;
 /**
+ * Candidate alias keys for one raw label. The first key is the strict raw
+ * normalized label; later keys cover label decorations observed in real
+ * liquidaciones that are not conceptual differences:
+ * - parenthetical/base tails (`Seguro Cesantía 0,6% (Imponible: ...)`)
+ * - AFP commission administrator/rate suffixes (`Comisión AFP Provida 1,45%`)
+ */
+declare function aliasKeysForLabel(label: string): string[];
+declare function findAliasItem(label: string, itemType: ItemType, index?: AliasIndex): LexiconItem | null;
+/**
  * Resolve a raw label to its lexicon `canonicalId`, scoped to an `itemType`.
  * Returns `null` when no alias matches (unknown concept, or a section/itemType
  * mismatch — e.g. `Colación` is `income`, asking with `'deduction'` is null).
  *
- * Matching is `{ itemType, normalizedLabel }` against the same alias index
- * the satellite's deterministic matcher uses, so any alias the lexicon
- * recognizes resolves identically here.
+ * Matching is against the same candidate-key set the deterministic matcher
+ * uses, so any alias the lexicon recognizes resolves identically here.
  */
 declare function resolveLabelToCanonicalId(label: string, itemType: ItemType): string | null;
 
-export { type AliasIndex, buildAliasIndex, resolveLabelToCanonicalId };
+export { type AliasIndex, aliasKeysForLabel, buildAliasIndex, findAliasItem, resolveLabelToCanonicalId };

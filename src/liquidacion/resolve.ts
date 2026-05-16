@@ -33,21 +33,60 @@ export function buildAliasIndex(lexicon: Lexicon): AliasIndex {
 
 const INDEX: AliasIndex = buildAliasIndex(LEXICON)
 
+function addKey(keys: Set<string>, key: string): void {
+    if (key.length > 0) keys.add(key)
+}
+
+function decoratedCommissionKey(key: string): string | null {
+    if (/^comision afp(?:\s|$)/.test(key)) return 'comision afp'
+    if (/^comision a f p(?:\s|$)/.test(key)) return 'comision a f p'
+    if (/^comision administradora(?:\s|$)/.test(key)) return 'comision administradora'
+    if (/^comision adm afp(?:\s|$)/.test(key)) return 'comision adm afp'
+    return null
+}
+
+/**
+ * Candidate alias keys for one raw label. The first key is the strict raw
+ * normalized label; later keys cover label decorations observed in real
+ * liquidaciones that are not conceptual differences:
+ * - parenthetical/base tails (`Seguro Cesantía 0,6% (Imponible: ...)`)
+ * - AFP commission administrator/rate suffixes (`Comisión AFP Provida 1,45%`)
+ */
+export function aliasKeysForLabel(label: string): string[] {
+    const keys = new Set<string>()
+    addKey(keys, normalizeLabel(label, false))
+    addKey(keys, normalizeLabel(label, true))
+    for (const key of [...keys]) {
+        const decorated = decoratedCommissionKey(key)
+        if (decorated) addKey(keys, decorated)
+    }
+    return [...keys]
+}
+
+export function findAliasItem(
+    label: string,
+    itemType: ItemType,
+    index: AliasIndex = INDEX,
+): LexiconItem | null {
+    for (const key of aliasKeysForLabel(label)) {
+        const item = index[itemType].get(key)
+        if (item) return item
+    }
+    return null
+}
+
 /**
  * Resolve a raw label to its lexicon `canonicalId`, scoped to an `itemType`.
  * Returns `null` when no alias matches (unknown concept, or a section/itemType
  * mismatch — e.g. `Colación` is `income`, asking with `'deduction'` is null).
  *
- * Matching is `{ itemType, normalizedLabel }` against the same alias index
- * the satellite's deterministic matcher uses, so any alias the lexicon
- * recognizes resolves identically here.
+ * Matching is against the same candidate-key set the deterministic matcher
+ * uses, so any alias the lexicon recognizes resolves identically here.
  */
 export function resolveLabelToCanonicalId(
     label: string,
     itemType: ItemType,
 ): string | null {
-    const key = normalizeLabel(label, false)
-    if (key.length === 0) return null
-    const item = INDEX[itemType].get(key)
+    const item = findAliasItem(label, itemType)
     return item ? item.id : null
 }

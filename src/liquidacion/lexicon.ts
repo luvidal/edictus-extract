@@ -21,7 +21,7 @@
 
 import { normalizeLabel } from '../normalize'
 import { LEXICON } from '../data/liquidacion-lexicon.generated'
-import { buildAliasIndex, type AliasIndex } from './resolve'
+import { buildAliasIndex, findAliasItem, type AliasIndex } from './resolve'
 import {
     DECISION_SCHEMA_VERSION,
     getCachedDecision,
@@ -338,11 +338,12 @@ function classifyMatchedItem(
     item: LexiconItem,
     value: number,
     canonicalId: string | null,
+    label: string = item.canonical,
 ): ClassifiedItem {
     const cls = item.classification
     const out: ClassifiedItem = {
         canonicalId,
-        label: item.canonical,
+        label,
         value,
         naturaleza: cls?.naturaleza ?? 'Otro',
         tipoRenta: cls?.tipoRenta ?? 'Variable',
@@ -379,21 +380,24 @@ export function classifySection(
     index: AliasIndex = INDEX,
 ): ClassifiedItem[] {
     const itemType = SECTION_TO_ITEM_TYPE[section]
-    const bucket = index[itemType]
     // Detect same-section collisions: track first-winner per canonicalId.
     const winnerSeen = new Set<string>()
     const out: ClassifiedItem[] = []
     for (const row of rows) {
         if (!row || typeof row.label !== 'string') continue
-        const key = normalizeLabel(row.label, false)
-        const hit = key ? bucket.get(key) : undefined
+        const hit = findAliasItem(row.label, itemType, index)
         if (!hit) {
             out.push(fallback(row.label, row.value, section))
             continue
         }
         const isCollisionLoser = winnerSeen.has(hit.id)
         if (!isCollisionLoser) winnerSeen.add(hit.id)
-        out.push(classifyMatchedItem(hit, row.value, isCollisionLoser ? null : hit.id))
+        out.push(classifyMatchedItem(
+            hit,
+            row.value,
+            isCollisionLoser ? null : hit.id,
+            isCollisionLoser ? row.label : hit.canonical,
+        ))
     }
     return out
 }
@@ -462,7 +466,6 @@ export async function classifyAndArbitrate(
     // distinguish a `null`-canonicalId loser from a `null`-canonicalId
     // unknown without changing the `ClassifiedItem` public contract.
     const itemType = SECTION_TO_ITEM_TYPE[section]
-    const bucket = index[itemType]
     const arbiterAnswers = new Map<string, ArbiterResult>()
     const out: ClassifiedItem[] = new Array(deterministic.length)
     for (let i = 0; i < deterministic.length; i++) {
@@ -470,7 +473,7 @@ export async function classifyAndArbitrate(
         const raw = rows[i]
         const normalized = normalizeLabel(raw.label, false)
         // Matched by the lexicon (winner or collision loser) → bypass arbiter.
-        if (normalized.length > 0 && bucket.has(normalized)) {
+        if (findAliasItem(raw.label, itemType, index)) {
             out[i] = det
             continue
         }
@@ -499,7 +502,7 @@ export async function classifyAndArbitrate(
         const item = out[i]
         if (!item.canonicalId) continue
         if (winners.has(item.canonicalId)) {
-            out[i] = { ...item, canonicalId: null }
+            out[i] = { ...item, canonicalId: null, label: rows[i]?.label ?? item.label }
         } else {
             winners.add(item.canonicalId)
         }

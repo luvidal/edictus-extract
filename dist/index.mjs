@@ -757,7 +757,34 @@ function buildAliasIndex(lexicon) {
   }
   return idx;
 }
-buildAliasIndex(LEXICON);
+var INDEX = buildAliasIndex(LEXICON);
+function addKey(keys, key) {
+  if (key.length > 0) keys.add(key);
+}
+function decoratedCommissionKey(key) {
+  if (/^comision afp(?:\s|$)/.test(key)) return "comision afp";
+  if (/^comision a f p(?:\s|$)/.test(key)) return "comision a f p";
+  if (/^comision administradora(?:\s|$)/.test(key)) return "comision administradora";
+  if (/^comision adm afp(?:\s|$)/.test(key)) return "comision adm afp";
+  return null;
+}
+function aliasKeysForLabel(label) {
+  const keys = /* @__PURE__ */ new Set();
+  addKey(keys, normalizeLabel(label, false));
+  addKey(keys, normalizeLabel(label, true));
+  for (const key of [...keys]) {
+    const decorated = decoratedCommissionKey(key);
+    if (decorated) addKey(keys, decorated);
+  }
+  return [...keys];
+}
+function findAliasItem(label, itemType, index = INDEX) {
+  for (const key of aliasKeysForLabel(label)) {
+    const item = index[itemType].get(key);
+    if (item) return item;
+  }
+  return null;
+}
 
 // src/liquidacion/unknown-cache.ts
 var DECISION_SCHEMA_VERSION = 1;
@@ -959,11 +986,11 @@ async function arbitrate(input) {
     classification: decision.classification
   };
 }
-function classifyMatchedItem(item, value, canonicalId) {
+function classifyMatchedItem(item, value, canonicalId, label = item.canonical) {
   const cls = item.classification;
   const out = {
     canonicalId,
-    label: item.canonical,
+    label,
     value,
     naturaleza: cls?.naturaleza ?? "Otro",
     tipoRenta: cls?.tipoRenta ?? "Variable"
@@ -982,20 +1009,23 @@ function fallback(rawLabel, value, section) {
 }
 function classifySection(rows, section, index = INDEX2) {
   const itemType = SECTION_TO_ITEM_TYPE[section];
-  const bucket = index[itemType];
   const winnerSeen = /* @__PURE__ */ new Set();
   const out = [];
   for (const row of rows) {
     if (!row || typeof row.label !== "string") continue;
-    const key = normalizeLabel(row.label, false);
-    const hit = key ? bucket.get(key) : void 0;
+    const hit = findAliasItem(row.label, itemType, index);
     if (!hit) {
       out.push(fallback(row.label, row.value, section));
       continue;
     }
     const isCollisionLoser = winnerSeen.has(hit.id);
     if (!isCollisionLoser) winnerSeen.add(hit.id);
-    out.push(classifyMatchedItem(hit, row.value, isCollisionLoser ? null : hit.id));
+    out.push(classifyMatchedItem(
+      hit,
+      row.value,
+      isCollisionLoser ? null : hit.id,
+      isCollisionLoser ? row.label : hit.canonical
+    ));
   }
   return out;
 }
@@ -1008,14 +1038,13 @@ async function classifyLiquidacionRows(input, lexicon = LEXICON, index = INDEX2)
 async function classifyAndArbitrate(rows, section, lexicon = LEXICON, index = INDEX2) {
   const deterministic = classifySection(rows, section, index);
   const itemType = SECTION_TO_ITEM_TYPE[section];
-  const bucket = index[itemType];
   const arbiterAnswers = /* @__PURE__ */ new Map();
   const out = new Array(deterministic.length);
   for (let i = 0; i < deterministic.length; i++) {
     const det = deterministic[i];
     const raw = rows[i];
     const normalized = normalizeLabel(raw.label, false);
-    if (normalized.length > 0 && bucket.has(normalized)) {
+    if (findAliasItem(raw.label, itemType, index)) {
       out[i] = det;
       continue;
     }
@@ -1040,7 +1069,7 @@ async function classifyAndArbitrate(rows, section, lexicon = LEXICON, index = IN
     const item = out[i];
     if (!item.canonicalId) continue;
     if (winners.has(item.canonicalId)) {
-      out[i] = { ...item, canonicalId: null };
+      out[i] = { ...item, canonicalId: null, label: rows[i]?.label ?? item.label };
     } else {
       winners.add(item.canonicalId);
     }

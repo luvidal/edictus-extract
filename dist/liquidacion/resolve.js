@@ -490,14 +490,41 @@ function buildAliasIndex(lexicon) {
   return idx;
 }
 var INDEX = buildAliasIndex(LEXICON);
+function addKey(keys, key) {
+  if (key.length > 0) keys.add(key);
+}
+function decoratedCommissionKey(key) {
+  if (/^comision afp(?:\s|$)/.test(key)) return "comision afp";
+  if (/^comision a f p(?:\s|$)/.test(key)) return "comision a f p";
+  if (/^comision administradora(?:\s|$)/.test(key)) return "comision administradora";
+  if (/^comision adm afp(?:\s|$)/.test(key)) return "comision adm afp";
+  return null;
+}
+function aliasKeysForLabel(label) {
+  const keys = /* @__PURE__ */ new Set();
+  addKey(keys, normalizeLabel(label, false));
+  addKey(keys, normalizeLabel(label, true));
+  for (const key of [...keys]) {
+    const decorated = decoratedCommissionKey(key);
+    if (decorated) addKey(keys, decorated);
+  }
+  return [...keys];
+}
+function findAliasItem(label, itemType, index = INDEX) {
+  for (const key of aliasKeysForLabel(label)) {
+    const item = index[itemType].get(key);
+    if (item) return item;
+  }
+  return null;
+}
 function resolveLabelToCanonicalId(label, itemType) {
-  const key = normalizeLabel(label, false);
-  if (key.length === 0) return null;
-  const item = INDEX[itemType].get(key);
+  const item = findAliasItem(label, itemType);
   return item ? item.id : null;
 }
 
+exports.aliasKeysForLabel = aliasKeysForLabel;
 exports.buildAliasIndex = buildAliasIndex;
+exports.findAliasItem = findAliasItem;
 exports.resolveLabelToCanonicalId = resolveLabelToCanonicalId;
 //# sourceMappingURL=resolve.js.map
 //# sourceMappingURL=resolve.js.map

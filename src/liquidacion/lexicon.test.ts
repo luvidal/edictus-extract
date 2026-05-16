@@ -143,6 +143,7 @@ describe('lexicon — deterministic', () => {
         // Winner keeps canonicalId; loser drops it but both stay classified.
         expect(out[0].canonicalId).toBe('comision_afp')
         expect(out[1].canonicalId).toBeNull()
+        expect(out[1].label).toBe('Comision AFP')
         expect(out[0].naturaleza).toBe('Legal')
         expect(out[0].legalType).toBe('afp')
         expect(out[1].naturaleza).toBe('Legal')
@@ -434,6 +435,7 @@ describe('lexicon — arbiter', () => {
         expect(out[1].tipoRenta).toBe('Fija')
         // Loser keeps the raw label (it was arbiter-promoted, but collision
         // demotion strips canonicalId without re-labeling).
+        expect(out[1].label).toBe('Aporte Comida')
         expect(out[0].value).toBe(10000)
         expect(out[1].value).toBe(5000)
     })
@@ -475,6 +477,7 @@ describe('lexicon — arbiter', () => {
         })
         // Loser: canonicalId null, but classification preserved.
         expect(out[1].canonicalId).toBeNull()
+        expect(out[1].label).toBe('Comision AFP')
         expect(out[1]).toMatchObject({
             naturaleza: 'Legal',
             legalType: 'afp',
@@ -545,6 +548,56 @@ describe('lexicon — D2 parametric-stripped aliases (shipped seed)', () => {
             label: 'Seguro de Cesantía',
             naturaleza: 'Legal',
             legalType: 'cesantia',
+            tipoRenta: 'Fija',
+        })
+        expect(tracker.calls).toBe(0)
+    })
+
+    it('decorated Seguro de Cesantía with imponible context resolves deterministically', async () => {
+        const tracker = trackingStub({
+            decision: 'new_item',
+            proposedCanonical: 'Something Else',
+            itemType: 'deduction',
+            classification: { naturaleza: 'Otro', tipoRenta: 'Variable' },
+            confidence: 'high',
+            reason: 'should never be called',
+        })
+        configureWith(tracker.call)
+
+        const out = await classifyLiquidacionRows({
+            haberes: [],
+            descuentos: [{ label: 'Seguro de Cesantía 0,6% (Imponible: 5.222.933)', value: 31338 }],
+        })
+        expect(out.descuentos[0]).toMatchObject({
+            canonicalId: 'seguro_cesantia',
+            label: 'Seguro de Cesantía',
+            naturaleza: 'Legal',
+            legalType: 'cesantia',
+            tipoRenta: 'Fija',
+        })
+        expect(tracker.calls).toBe(0)
+    })
+
+    it('decorated AFP commission with administrator and rate resolves deterministically', async () => {
+        const tracker = trackingStub({
+            decision: 'new_item',
+            proposedCanonical: 'Something Else',
+            itemType: 'deduction',
+            classification: { naturaleza: 'Otro', tipoRenta: 'Variable' },
+            confidence: 'high',
+            reason: 'should never be called',
+        })
+        configureWith(tracker.call)
+
+        const out = await classifyLiquidacionRows({
+            haberes: [],
+            descuentos: [{ label: 'Comisión AFP Provida 1,45%', value: 50411 }],
+        })
+        expect(out.descuentos[0]).toMatchObject({
+            canonicalId: 'comision_afp',
+            label: 'Comisión AFP',
+            naturaleza: 'Legal',
+            legalType: 'afp',
             tipoRenta: 'Fija',
         })
         expect(tracker.calls).toBe(0)
