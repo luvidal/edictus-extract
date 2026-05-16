@@ -518,11 +518,35 @@ describe('lexicon — D2 parametric-stripped aliases (shipped seed)', () => {
             canonicalId: 'seguro_cesantia',
             label: 'Seguro de Cesantía',
             naturaleza: 'Legal',
-            legalType: 'afp',
+            legalType: 'cesantia',
             tipoRenta: 'Fija',
         })
         // Deterministic match — arbiter must not have been called.
         expect(tracker.calls).toBe(0)
     })
-})
 
+    it('Seguro de Cesantía resolves deterministically to seguro_cesantia without an arbiter call', async () => {
+        const tracker = trackingStub({
+            decision: 'new_item',
+            proposedCanonical: 'Something Else',
+            itemType: 'deduction',
+            classification: { naturaleza: 'Otro', tipoRenta: 'Variable' },
+            confidence: 'high',
+            reason: 'should never be called',
+        })
+        configureWith(tracker.call)
+
+        const out = await classifyLiquidacionRows({
+            haberes: [],
+            descuentos: [{ label: 'Seguro de Cesantía', value: 3500 }],
+        })
+        expect(out.descuentos[0]).toMatchObject({
+            canonicalId: 'seguro_cesantia',
+            label: 'Seguro de Cesantía',
+            naturaleza: 'Legal',
+            legalType: 'cesantia',
+            tipoRenta: 'Fija',
+        })
+        expect(tracker.calls).toBe(0)
+    })
+})

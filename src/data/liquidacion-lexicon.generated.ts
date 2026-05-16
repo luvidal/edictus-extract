@@ -352,7 +352,7 @@ export const LEXICON: Lexicon = {
             "classification": {
                 "tipoRenta": "Fija",
                 "naturaleza": "Legal",
-                "legalType": "afp"
+                "legalType": "cesantia"
             }
         },
         {

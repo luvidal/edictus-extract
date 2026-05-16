@@ -316,11 +316,7 @@ items:
   - id: seguro_cesantia
     canonical: Seguro de Cesantía
     itemType: deduction
-    # Worker AFC contribution. Plan picks Legal/legalType=afp as the safe
-    # default so it accumulates into `cotizPreviReal` in
-    # `app/reports/situacion/reliquidacion.ts`, matching the legacy
-    # classifier's "afp (AFP, previsión, SIS, invalidez, sobrevivencia,
-    # cesantía)" grouping at CLASSIFY_SCHEMA_VERSION = 4.
+    # Worker AFC contribution; its own legalType routes reliquidación into cotizCesantiaReal.
     aliases:
       - Seguro de Cesantía
       - Seguro de Cesantia
@@ -344,7 +340,7 @@ items:
     classification:
       naturaleza: Legal
       tipoRenta: Fija
-      legalType: afp
+      legalType: cesantia
 
   - id: impuesto_unico
     canonical: Impuesto Único

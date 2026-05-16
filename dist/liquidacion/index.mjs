@@ -240,6 +240,8 @@ var LEXICON = {
         "Cotizacion Previsional",
         "Capitalizaci\xF3n Individual",
         "Capitalizacion Individual",
+        "Capitalizaci\xF3n Individual 10%",
+        "Capitalizacion Individual 10%",
         "AFP Obligatoria",
         "Previsi\xF3n AFP",
         "Prevision AFP"
@@ -286,6 +288,9 @@ var LEXICON = {
         "Cotiz. Salud Obligatoria",
         "Cotizacion Salud Obligatoria",
         "Cotizaci\xF3n Salud Obligatoria",
+        "Cotiz. Salud Obligatoria 7%",
+        "Cotizacion Salud Obligatoria 7%",
+        "Cotizaci\xF3n Salud Obligatoria 7%",
         "Fonasa",
         "Isapre",
         "Cotizaci\xF3n Isapre",
@@ -329,9 +334,16 @@ var LEXICON = {
         "Seguro de Cesantia",
         "Seguro Cesant\xEDa",
         "Seguro Cesantia",
+        "Seguro de Cesant\xEDa 0,6%",
+        "Seguro de Cesantia 0,6%",
+        "Seguro Cesant\xEDa 0,6%",
+        "Seguro Cesantia 0,6%",
         "Cesant\xEDa",
         "Cesantia",
+        "Cesant\xEDa 0,6%",
+        "Cesantia 0,6%",
         "AFC",
+        "AFC 0,6%",
         "Cotizaci\xF3n AFC",
         "Cotizacion AFC",
         "Cotiz. AFC",
@@ -341,7 +353,7 @@ var LEXICON = {
       "classification": {
         "tipoRenta": "Fija",
         "naturaleza": "Legal",
-        "legalType": "afp"
+        "legalType": "cesantia"
       }
     },
     {
@@ -728,16 +740,18 @@ async function classifyLiquidacionRows(input, lexicon = LEXICON, index = INDEX) 
 }
 async function classifyAndArbitrate(rows, section, lexicon = LEXICON, index = INDEX) {
   const deterministic = classifySection(rows, section, index);
+  const itemType = SECTION_TO_ITEM_TYPE[section];
+  const bucket = index[itemType];
   const arbiterAnswers = /* @__PURE__ */ new Map();
   const out = new Array(deterministic.length);
   for (let i = 0; i < deterministic.length; i++) {
     const det = deterministic[i];
     const raw = rows[i];
-    if (det.canonicalId !== null && det.canonicalId !== void 0) {
+    const normalized = normalizeLabel(raw.label, false);
+    if (normalized.length > 0 && bucket.has(normalized)) {
       out[i] = det;
       continue;
     }
-    const normalized = normalizeLabel(raw.label, false);
     if (!normalized) {
       out[i] = det;
       continue;
