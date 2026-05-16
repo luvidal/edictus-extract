@@ -1,4 +1,5 @@
-import { LiquidacionRowsInput, Lexicon, ItemType, LexiconItem, LiquidacionRowsOutput } from './types.js';
+import { AliasIndex } from './resolve.js';
+import { LiquidacionRowsInput, Lexicon, LiquidacionRowsOutput } from './types.js';
 
 /**
  * Liquidación-de-sueldo deterministic lexicon matcher.
@@ -21,8 +22,6 @@ import { LiquidacionRowsInput, Lexicon, ItemType, LexiconItem, LiquidacionRowsOu
  * documented stub.
  */
 
-/** Map<itemType, Map<normalizedAlias, LexiconItem>> built per-lexicon. */
-type AliasIndex = Record<ItemType, Map<string, LexiconItem>>;
 /**
  * Public deterministic-plus-arbiter entry. Same function `extract()` calls
  * internally for `doctype === 'liquidaciones-sueldo'`; also re-exported via

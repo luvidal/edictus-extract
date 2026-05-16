@@ -21,6 +21,7 @@
 
 import { normalizeLabel } from '../normalize'
 import { LEXICON } from '../data/liquidacion-lexicon.generated'
+import { buildAliasIndex, type AliasIndex } from './resolve'
 import {
     DECISION_SCHEMA_VERSION,
     getCachedDecision,
@@ -55,25 +56,11 @@ const ARBITER_MODEL = 'gemini-2.5-pro'
 /** Shared symbol used by `configure()` in `src/index.ts`. */
 const CONFIG_KEY = Symbol.for('@jogi/extract.config')
 
-/** Map<itemType, Map<normalizedAlias, LexiconItem>> built per-lexicon. */
-type AliasIndex = Record<ItemType, Map<string, LexiconItem>>
-
-/** Build an alias index — exported for tests that exercise a synthetic lexicon. */
-export function buildAliasIndex(lexicon: Lexicon): AliasIndex {
-    const idx: AliasIndex = { income: new Map(), deduction: new Map() }
-    for (const item of lexicon.items) {
-        const bucket = idx[item.itemType]
-        for (const alias of item.aliases) {
-            const key = normalizeLabel(alias, false)
-            if (key.length === 0) continue
-            // First-wins on duplicate aliases inside the same itemType.
-            if (!bucket.has(key)) bucket.set(key, item)
-        }
-    }
-    return idx
-}
-
 const INDEX: AliasIndex = buildAliasIndex(LEXICON)
+
+// Re-export so existing tests can keep importing `buildAliasIndex` from
+// `./lexicon`; the canonical source now lives in `./resolve`.
+export { buildAliasIndex }
 
 /**
  * Result returned by the arbiter for one unknown cluster. `null` means the

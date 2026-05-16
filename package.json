@@ -25,6 +25,11 @@
       "types": "./dist/liquidacion/types.d.ts",
       "import": "./dist/liquidacion/types.mjs",
       "require": "./dist/liquidacion/types.js"
+    },
+    "./liquidacion/resolve": {
+      "types": "./dist/liquidacion/resolve.d.ts",
+      "import": "./dist/liquidacion/resolve.mjs",
+      "require": "./dist/liquidacion/resolve.js"
     }
   },
   "sideEffects": false,

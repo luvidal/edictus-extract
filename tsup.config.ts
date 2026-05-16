@@ -6,6 +6,7 @@ export default defineConfig({
         normalize: 'src/normalize.ts',
         'liquidacion/index': 'src/liquidacion/index.ts',
         'liquidacion/types': 'src/liquidacion/types.ts',
+        'liquidacion/resolve': 'src/liquidacion/resolve.ts',
     },
     format: ['cjs', 'esm'],
     dts: true,

@@ -482,6 +482,21 @@ var LEXICON = {
   ]
 };
 
+// src/liquidacion/resolve.ts
+function buildAliasIndex(lexicon) {
+  const idx = { income: /* @__PURE__ */ new Map(), deduction: /* @__PURE__ */ new Map() };
+  for (const item of lexicon.items) {
+    const bucket = idx[item.itemType];
+    for (const alias of item.aliases) {
+      const key = normalizeLabel(alias, false);
+      if (key.length === 0) continue;
+      if (!bucket.has(key)) bucket.set(key, item);
+    }
+  }
+  return idx;
+}
+buildAliasIndex(LEXICON);
+
 // src/liquidacion/unknown-cache.ts
 var DECISION_SCHEMA_VERSION = 1;
 var DEFAULT_TTL_MS = 6 * 60 * 60 * 1e3;
@@ -512,19 +527,7 @@ var SECTION_TO_ITEM_TYPE = {
 };
 var ARBITER_MODEL = "gemini-2.5-pro";
 var CONFIG_KEY = /* @__PURE__ */ Symbol.for("@jogi/extract.config");
-function buildAliasIndex(lexicon) {
-  const idx = { income: /* @__PURE__ */ new Map(), deduction: /* @__PURE__ */ new Map() };
-  for (const item of lexicon.items) {
-    const bucket = idx[item.itemType];
-    for (const alias of item.aliases) {
-      const key = normalizeLabel(alias, false);
-      if (key.length === 0) continue;
-      if (!bucket.has(key)) bucket.set(key, item);
-    }
-  }
-  return idx;
-}
-var INDEX = buildAliasIndex(LEXICON);
+var INDEX2 = buildAliasIndex(LEXICON);
 function getGeminiCall() {
   const g = globalThis;
   return g[CONFIG_KEY]?.geminiCall;
@@ -715,7 +718,7 @@ function fallback(rawLabel, value, section) {
     tipoRenta: "Variable"
   };
 }
-function classifySection(rows, section, index = INDEX) {
+function classifySection(rows, section, index = INDEX2) {
   const itemType = SECTION_TO_ITEM_TYPE[section];
   const bucket = index[itemType];
   const winnerSeen = /* @__PURE__ */ new Set();
@@ -734,13 +737,13 @@ function classifySection(rows, section, index = INDEX) {
   }
   return out;
 }
-async function classifyLiquidacionRows(input, lexicon = LEXICON, index = INDEX) {
+async function classifyLiquidacionRows(input, lexicon = LEXICON, index = INDEX2) {
   return {
     haberes: await classifyAndArbitrate(input.haberes ?? [], "haberes", lexicon, index),
     descuentos: await classifyAndArbitrate(input.descuentos ?? [], "descuentos", lexicon, index)
   };
 }
-async function classifyAndArbitrate(rows, section, lexicon = LEXICON, index = INDEX) {
+async function classifyAndArbitrate(rows, section, lexicon = LEXICON, index = INDEX2) {
   const deterministic = classifySection(rows, section, index);
   const itemType = SECTION_TO_ITEM_TYPE[section];
   const bucket = index[itemType];
