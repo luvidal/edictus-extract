@@ -230,6 +230,8 @@ items:
       - Cotizacion Previsional
       - Capitalización Individual
       - Capitalizacion Individual
+      - Capitalización Individual 10%
+      - Capitalizacion Individual 10%
       - AFP Obligatoria
       - Previsión AFP
       - Prevision AFP
@@ -276,6 +278,9 @@ items:
       - Cotiz. Salud Obligatoria
       - Cotizacion Salud Obligatoria
       - Cotización Salud Obligatoria
+      - Cotiz. Salud Obligatoria 7%
+      - Cotizacion Salud Obligatoria 7%
+      - Cotización Salud Obligatoria 7%
       - Fonasa
       - Isapre
       - Cotización Isapre
@@ -321,9 +326,16 @@ items:
       - Seguro de Cesantia
       - Seguro Cesantía
       - Seguro Cesantia
+      - Seguro de Cesantía 0,6%
+      - Seguro de Cesantia 0,6%
+      - Seguro Cesantía 0,6%
+      - Seguro Cesantia 0,6%
       - Cesantía
       - Cesantia
+      - Cesantía 0,6%
+      - Cesantia 0,6%
       - AFC
+      - AFC 0,6%
       - Cotización AFC
       - Cotizacion AFC
       - Cotiz. AFC

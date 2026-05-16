@@ -437,5 +437,92 @@ describe('lexicon — arbiter', () => {
         expect(out[0].value).toBe(10000)
         expect(out[1].value).toBe(5000)
     })
+
+    it('deterministic collision loser keeps Legal/legalType even when arbiter declines (regression: collision losers must not be re-arbitrated)', async () => {
+        // Two `descuentos` rows that both alias to `comision_afp` — the second
+        // is a collision loser in the deterministic pass. Arbiter is stubbed
+        // to decline (`null` result via low confidence): if `classifyAndArbitrate`
+        // routes the loser through the arbiter, the row downgrades to the
+        // safest descuentos fallback (`Otro` / `Variable`, no `legalType`) and
+        // the `Legal/legalType=afp` contribution to `cotizPreviReal` is lost.
+        // The fix: lexicon-matched rows (winner OR loser) bypass the arbiter
+        // entirely, so the loser keeps its full classification.
+        const tracker = trackingStub({
+            decision: 'known',
+            canonicalId: 'comision_afp',
+            confidence: 'low', // → parseArbiterResponse returns null
+            reason: 'irrelevant',
+        })
+        configureWith(tracker.call)
+
+        const out = await classifyAndArbitrate(
+            [
+                { label: 'Comisión AFP', value: 6000 },
+                { label: 'Comision AFP', value: 4000 },
+            ],
+            'descuentos',
+            TEST_LEXICON,
+            idx,
+        )
+        expect(out).toHaveLength(2)
+        // Winner: full canonical classification.
+        expect(out[0]).toMatchObject({
+            canonicalId: 'comision_afp',
+            naturaleza: 'Legal',
+            legalType: 'afp',
+            tipoRenta: 'Fija',
+            value: 6000,
+        })
+        // Loser: canonicalId null, but classification preserved.
+        expect(out[1].canonicalId).toBeNull()
+        expect(out[1]).toMatchObject({
+            naturaleza: 'Legal',
+            legalType: 'afp',
+            tipoRenta: 'Fija',
+            value: 4000,
+        })
+        // The arbiter must not have been called for either row — both were
+        // lexicon-matched by the deterministic pass.
+        expect(tracker.calls).toBe(0)
+    })
+})
+
+describe('lexicon — D2 parametric-stripped aliases (shipped seed)', () => {
+    beforeEach(() => {
+        clearCache()
+        __setNowForTest(undefined)
+    })
+
+    it('Seguro de Cesantía 0,6% resolves deterministically to seguro_cesantia without an arbiter call', async () => {
+        // Jogi's `doctypes.json` `descuentos[].label` normalize block has
+        // `stripParametric: true`, but it only strips `(...)` and `:N UNIT`
+        // suffixes — not bare `0,6%` tails. A row labeled "Seguro de Cesantía
+        // 0,6%" reaches the satellite as-is, and the deterministic matcher
+        // must resolve it directly via an alias (regression: pre-fix the row
+        // fell through to the arbiter and, on decline, downgraded to Otro).
+        const tracker = trackingStub({
+            decision: 'new_item',
+            proposedCanonical: 'Something Else',
+            itemType: 'deduction',
+            classification: { naturaleza: 'Otro', tipoRenta: 'Variable' },
+            confidence: 'high',
+            reason: 'should never be called',
+        })
+        configureWith(tracker.call)
+
+        const out = await classifyLiquidacionRows({
+            haberes: [],
+            descuentos: [{ label: 'Seguro de Cesantía 0,6%', value: 3500 }],
+        })
+        expect(out.descuentos[0]).toMatchObject({
+            canonicalId: 'seguro_cesantia',
+            label: 'Seguro de Cesantía',
+            naturaleza: 'Legal',
+            legalType: 'afp',
+            tipoRenta: 'Fija',
+        })
+        // Deterministic match — arbiter must not have been called.
+        expect(tracker.calls).toBe(0)
+    })
 })
 

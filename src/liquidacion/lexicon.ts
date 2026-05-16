@@ -459,17 +459,34 @@ export async function classifyAndArbitrate(
     // Step 2: arbiter for fallback rows. We dedupe by normalizedLabel so a
     // repeated unknown only triggers one arbiter call per `classifyLiquidacionRows`
     // invocation (the cache further deduplicates across calls within TTL).
+    //
+    // Bypass guard: a row was matched by the lexicon (deterministic pass)
+    // either when its `canonicalId` is a string (winner) OR when the row's
+    // normalized label hits the alias index but the canonical slot was
+    // already claimed by an earlier row in the same section (collision
+    // loser → `canonicalId: null` but full classification preserved).
+    // Both winners and losers must skip the arbiter — losers MUST NOT be
+    // re-arbitrated since an arbiter decline (Gemini down, low confidence,
+    // malformed JSON) would silently downgrade them to the safest fallback
+    // and break the `Legal/legalType` contribution to `cotizPreviReal`.
+    //
+    // True unknowns (the lexicon didn't recognize the label at all) are
+    // identified by re-checking the alias index — that's the only way to
+    // distinguish a `null`-canonicalId loser from a `null`-canonicalId
+    // unknown without changing the `ClassifiedItem` public contract.
+    const itemType = SECTION_TO_ITEM_TYPE[section]
+    const bucket = index[itemType]
     const arbiterAnswers = new Map<string, ArbiterResult>()
     const out: ClassifiedItem[] = new Array(deterministic.length)
     for (let i = 0; i < deterministic.length; i++) {
         const det = deterministic[i]
         const raw = rows[i]
-        // Already matched by the lexicon → bypass the arbiter entirely.
-        if (det.canonicalId !== null && det.canonicalId !== undefined) {
+        const normalized = normalizeLabel(raw.label, false)
+        // Matched by the lexicon (winner or collision loser) → bypass arbiter.
+        if (normalized.length > 0 && bucket.has(normalized)) {
             out[i] = det
             continue
         }
-        const normalized = normalizeLabel(raw.label, false)
         if (!normalized) {
             out[i] = det
             continue
