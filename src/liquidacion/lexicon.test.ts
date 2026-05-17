@@ -485,6 +485,58 @@ describe('lexicon — arbiter', () => {
         })
     })
 
+    it('lexicon-matched deduction with legalType wins collision over arbiter promotion (reliquidación math safety)', async () => {
+        // Critical for reliquidación: each Legal deduction routes into a
+        // specific bucket via `legalType` (afp → cotizPreviReal, salud →
+        // cotizSaludReal, cesantia → cotizCesantiaReal). If a Gemini-arbitrated
+        // row stole the canonical from a lexicon-explicit Legal match, the
+        // legalType would be carried on the arbiter row (correct) but the
+        // lexicon row would lose canonicalId AND survive as a fallback —
+        // double-counting the deduction across two table rows, or silently
+        // re-bucketing it. The lexicon-priority collision rule prevents this.
+        configureWith(stubGemini({
+            decision: 'known',
+            canonicalId: 'comision_afp',
+            confidence: 'high',
+            reason: 'Arbiter thinks "Aporte Previsional" maps to Comisión AFP',
+        }))
+
+        const out = await classifyAndArbitrate(
+            [
+                // Arbiter-promoted FIRST (worst case).
+                { label: 'Aporte Previsional', value: 3000 },
+                // Lexicon match SECOND.
+                { label: 'Comisión AFP', value: 6000 },
+            ],
+            'descuentos',
+            TEST_LEXICON,
+            idx,
+        )
+        expect(out).toHaveLength(2)
+        // Lexicon match keeps the canonical AND the legalType — the reliquidación
+        // contribution to cotizPreviReal stays correct.
+        expect(out[1]).toMatchObject({
+            canonicalId: 'comision_afp',
+            label: 'Comisión AFP',
+            naturaleza: 'Legal',
+            legalType: 'afp',
+            tipoRenta: 'Fija',
+            value: 6000,
+        })
+        // Arbiter row demoted: canonicalId null, raw label preserved, and
+        // crucially the arbiter's assigned classification (which copied
+        // comision_afp's Legal/afp) is preserved on the demoted row too,
+        // so it still routes legally — but does not collide on canonicalId.
+        expect(out[0].canonicalId).toBeNull()
+        expect(out[0]).toMatchObject({
+            label: 'Aporte Previsional',
+            naturaleza: 'Legal',
+            legalType: 'afp',
+            tipoRenta: 'Fija',
+            value: 3000,
+        })
+    })
+
     it('arbiter-known row keeps the raw PDF label, even when the canonical has a different display name', async () => {
         // Regression: "Comisión Vacaciones $13.430" in a real liquidación was
         // arbiter-classified as `vacaciones` AND silently re-labeled to

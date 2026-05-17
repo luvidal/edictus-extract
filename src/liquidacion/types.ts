@@ -66,8 +66,9 @@ export interface Lexicon {
  *   row is a collision loser (see *Collision Rule*) or when no canonical match
  *   exists; the absent/`null` form routes Jogi's `createDefaultRows` through
  *   the raw-label fallback so no value is silently dropped.
- * - `label` is the canonical display label when matched, else the original raw
- *   label preserved verbatim.
+ * - `label` is ALWAYS the original raw PDF label, preserved verbatim. Row
+ *   identity for the report table comes from `canonicalId`; the visible label
+ *   must mirror the source document so analysts can reconcile against the file.
  * - `tipoRenta` / `naturaleza` / `legalType` carry classification metadata
  *   from the matched lexicon item, including on collision losers so
  *   reliquidación math stays correct.
@@ -75,7 +76,7 @@ export interface Lexicon {
 export interface ClassifiedItem {
     /** Lexicon id of the matched canonical, or `null` for collision losers / unknowns. */
     canonicalId?: string | null
-    /** Display label — canonical when matched, else the raw label verbatim. */
+    /** Raw PDF label, preserved verbatim — never rewritten to the canonical. */
     label: string
     /** Numeric amount, untouched by the lexicon. */
     value: number
