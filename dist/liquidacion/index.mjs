@@ -722,7 +722,7 @@ async function arbitrate(input) {
     classification: decision.classification
   };
 }
-function classifyMatchedItem(item, value, canonicalId, label = item.canonical) {
+function classifyMatchedItem(item, value, canonicalId, label) {
   const cls = item.classification;
   const out = {
     canonicalId,
@@ -760,7 +760,7 @@ function classifySection(rows, section, index = INDEX2) {
       hit,
       row.value,
       isCollisionLoser ? null : hit.id,
-      isCollisionLoser ? row.label : hit.canonical
+      row.label
     ));
   }
   return out;
@@ -800,11 +800,21 @@ async function classifyAndArbitrate(rows, section, lexicon = LEXICON, index = IN
     }
     out[i] = applyArbiterResult(result, raw, section);
   }
+  const lexiconOwnedCanonicals = /* @__PURE__ */ new Set();
+  for (let i = 0; i < out.length; i++) {
+    const item = out[i];
+    if (!item.canonicalId) continue;
+    if (findAliasItem(rows[i].label, itemType, index)) {
+      lexiconOwnedCanonicals.add(item.canonicalId);
+    }
+  }
   const winners = /* @__PURE__ */ new Set();
   for (let i = 0; i < out.length; i++) {
     const item = out[i];
     if (!item.canonicalId) continue;
-    if (winners.has(item.canonicalId)) {
+    const isDeterministic = !!findAliasItem(rows[i].label, itemType, index);
+    const stolenFromLexicon = !isDeterministic && lexiconOwnedCanonicals.has(item.canonicalId);
+    if (stolenFromLexicon || winners.has(item.canonicalId)) {
       out[i] = { ...item, canonicalId: null, label: rows[i]?.label ?? item.label };
     } else {
       winners.add(item.canonicalId);
@@ -815,7 +825,7 @@ async function classifyAndArbitrate(rows, section, lexicon = LEXICON, index = IN
 function applyArbiterResult(result, row, section) {
   if (!result) return fallback(row.label, row.value, section);
   if (result.kind === "known") {
-    return classifyMatchedItem(result.item, row.value, result.item.id);
+    return classifyMatchedItem(result.item, row.value, result.item.id, row.label);
   }
   const cls = result.classification;
   const out = {
