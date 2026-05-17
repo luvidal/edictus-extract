@@ -85,10 +85,12 @@ describe('lexicon — deterministic', () => {
         expect(out).toMatchObject({ canonicalId: 'movilizacion', naturaleza: 'No imponible' })
     })
 
-    it('resolves "Asignacion Colacion" (unaccented) to colacion', () => {
+    it('resolves "Asignacion Colacion" (unaccented) to colacion AND preserves raw label', () => {
+        // canonicalId carries the row-identity bucket; the visible label
+        // must mirror the PDF source so analysts can verify against the file.
         const [out] = classifySection([{ label: 'Asignacion Colacion', value: 1 }], 'haberes', idx)
         expect(out.canonicalId).toBe('colacion')
-        expect(out.label).toBe('Colación')
+        expect(out.label).toBe('Asignacion Colacion')
     })
 
     it('classifies Salud 7% as Legal/salud', () => {
@@ -246,9 +248,11 @@ describe('lexicon — arbiter', () => {
 
         const rows = [{ label: 'Aporte Comida', value: 12345 }]
         const first = await classifyAndArbitrate(rows, 'haberes', TEST_LEXICON, idx)
+        // Arbiter-promoted: canonicalId is set for row bucketing, but the raw
+        // PDF label is preserved (no rewrite to the canonical's display name).
         expect(first[0]).toMatchObject({
             canonicalId: 'colacion',
-            label: 'Colación',
+            label: 'Aporte Comida',
             naturaleza: 'No imponible',
             tipoRenta: 'Fija',
         })
@@ -440,6 +444,77 @@ describe('lexicon — arbiter', () => {
         expect(out[1].value).toBe(5000)
     })
 
+    it('lexicon match wins collision over arbiter-promoted row regardless of input order', async () => {
+        // Regression: a real liquidación in prod had "Bono Venta $35.484"
+        // (arbiter classified as `comisiones` with high confidence) appear
+        // BEFORE "Comisión $290.759" (explicit lexicon alias of `comisiones`).
+        // With strictly order-based collision detection, "Bono Venta" would
+        // win the canonicalId and the lexicon-explicit "Comisión" would be
+        // demoted to canonicalId=null — bucketing the wrong row into the
+        // comisiones-canonical row across months and stranding the real
+        // Comisión values in a fallback row. The fix: lexicon-matched rows
+        // own the canonical over any arbiter promotion to the same canonical.
+        configureWith(stubGemini({
+            decision: 'known',
+            canonicalId: 'colacion',
+            confidence: 'high',
+            reason: 'Arbiter mistakenly maps this to Colación',
+        }))
+
+        const out = await classifyAndArbitrate(
+            [
+                // Arbiter-promoted row FIRST (worst case for order-based logic).
+                { label: 'Aporte Cocina', value: 5000 },
+                // Lexicon match SECOND.
+                { label: 'Colación', value: 10000 },
+            ],
+            'haberes',
+            TEST_LEXICON,
+            idx,
+        )
+        expect(out).toHaveLength(2)
+        // Lexicon match keeps the canonicalId even though it came later.
+        expect(out[1]).toMatchObject({ canonicalId: 'colacion', label: 'Colación', value: 10000 })
+        // Arbiter promotion is demoted; raw label and classification preserved.
+        expect(out[0].canonicalId).toBeNull()
+        expect(out[0]).toMatchObject({
+            label: 'Aporte Cocina',
+            naturaleza: 'No imponible',
+            tipoRenta: 'Fija',
+            value: 5000,
+        })
+    })
+
+    it('arbiter-known row keeps the raw PDF label, even when the canonical has a different display name', async () => {
+        // Regression: "Comisión Vacaciones $13.430" in a real liquidación was
+        // arbiter-classified as `vacaciones` AND silently re-labeled to
+        // "Vacaciones" in `ai_fields`. Analysts then couldn't reconcile the
+        // table against the PDF (the "Comisión" semantics were erased). The
+        // fix: arbiter promotion attaches canonicalId but never rewrites the
+        // visible label; the label is the source-of-truth string from the PDF.
+        configureWith(stubGemini({
+            decision: 'known',
+            canonicalId: 'colacion',
+            confidence: 'high',
+            reason: 'Treated as an alias of Colación by the arbiter',
+        }))
+
+        const out = await classifyAndArbitrate(
+            [{ label: 'Aporte Especial Comida', value: 4321 }],
+            'haberes',
+            TEST_LEXICON,
+            idx,
+        )
+        expect(out[0]).toMatchObject({
+            canonicalId: 'colacion',
+            // Raw label preserved even though the canonical display is "Colación".
+            label: 'Aporte Especial Comida',
+            naturaleza: 'No imponible',
+            tipoRenta: 'Fija',
+            value: 4321,
+        })
+    })
+
     it('deterministic collision loser keeps Legal/legalType even when arbiter declines (regression: collision losers must not be re-arbitrated)', async () => {
         // Two `descuentos` rows that both alias to `comision_afp` — the second
         // is a collision loser in the deterministic pass. Arbiter is stubbed
@@ -519,7 +594,9 @@ describe('lexicon — D2 parametric-stripped aliases (shipped seed)', () => {
         })
         expect(out.descuentos[0]).toMatchObject({
             canonicalId: 'seguro_cesantia',
-            label: 'Seguro de Cesantía',
+            // Raw label preserved (the lexicon match attaches canonicalId
+            // for bucketing but never renames the row).
+            label: 'Seguro de Cesantía 0,6%',
             naturaleza: 'Legal',
             legalType: 'cesantia',
             tipoRenta: 'Fija',
@@ -570,7 +647,7 @@ describe('lexicon — D2 parametric-stripped aliases (shipped seed)', () => {
         })
         expect(out.descuentos[0]).toMatchObject({
             canonicalId: 'seguro_cesantia',
-            label: 'Seguro de Cesantía',
+            label: 'Seguro de Cesantía 0,6% (Imponible: 5.222.933)',
             naturaleza: 'Legal',
             legalType: 'cesantia',
             tipoRenta: 'Fija',
@@ -595,7 +672,7 @@ describe('lexicon — D2 parametric-stripped aliases (shipped seed)', () => {
         })
         expect(out.descuentos[0]).toMatchObject({
             canonicalId: 'comision_afp',
-            label: 'Comisión AFP',
+            label: 'Comisión AFP Provida 1,45%',
             naturaleza: 'Legal',
             legalType: 'afp',
             tipoRenta: 'Fija',

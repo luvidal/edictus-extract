@@ -334,11 +334,22 @@ export async function arbitrate(input: {
 // Keeping the import here documents the dependency.
 void DECISION_SCHEMA_VERSION
 
+/**
+ * Build a `ClassifiedItem` from a matched lexicon entry.
+ *
+ * The `label` is ALWAYS the raw PDF text the row arrived with — never the
+ * lexicon canonical. Rewriting the raw label silently erases information
+ * the analyst needs to verify against the source document (e.g. a row
+ * arriving as "Comisión Vacaciones" must keep saying "Comisión Vacaciones"
+ * in the UI even if it bucketed into the `vacaciones` canonical). Row
+ * identity for the report table comes from `canonicalId`; the visible label
+ * is always the source-of-truth string from the PDF.
+ */
 function classifyMatchedItem(
     item: LexiconItem,
     value: number,
     canonicalId: string | null,
-    label: string = item.canonical,
+    label: string,
 ): ClassifiedItem {
     const cls = item.classification
     const out: ClassifiedItem = {
@@ -392,11 +403,13 @@ export function classifySection(
         }
         const isCollisionLoser = winnerSeen.has(hit.id)
         if (!isCollisionLoser) winnerSeen.add(hit.id)
+        // Always pass the raw PDF label. canonicalId carries identity; the
+        // visible label must mirror the source document. See classifyMatchedItem.
         out.push(classifyMatchedItem(
             hit,
             row.value,
             isCollisionLoser ? null : hit.id,
-            isCollisionLoser ? row.label : hit.canonical,
+            row.label,
         ))
     }
     return out
@@ -494,14 +507,31 @@ export async function classifyAndArbitrate(
         out[i] = applyArbiterResult(result, raw, section)
     }
 
-    // Step 3: collision detection across the full output (deterministic +
-    // arbiter-promoted `known` rows). The first occurrence keeps the
-    // canonicalId; later occurrences with the same canonicalId become losers.
+    // Step 3: collision detection across the full output. Two-tier priority:
+    // deterministic (lexicon-matched) rows own the canonical over any
+    // arbiter-promoted row that picked the same canonical. Within each tier
+    // the first occurrence wins (order-based, matching the in-section
+    // collision rule from step 1). The arbiter is a best-effort classifier;
+    // when Gemini guesses an existing canonical for a label the lexicon also
+    // recognizes explicitly (e.g. "Bono Venta" → `comisiones` in a PDF that
+    // also has a literal "Comisión" row), the explicit row must keep the
+    // canonicalId so analyst-visible bucketing stays stable across months.
+    const lexiconOwnedCanonicals = new Set<string>()
+    for (let i = 0; i < out.length; i++) {
+        const item = out[i]
+        if (!item.canonicalId) continue
+        if (findAliasItem(rows[i].label, itemType, index)) {
+            lexiconOwnedCanonicals.add(item.canonicalId)
+        }
+    }
     const winners = new Set<string>()
     for (let i = 0; i < out.length; i++) {
         const item = out[i]
         if (!item.canonicalId) continue
-        if (winners.has(item.canonicalId)) {
+        const isDeterministic = !!findAliasItem(rows[i].label, itemType, index)
+        const stolenFromLexicon =
+            !isDeterministic && lexiconOwnedCanonicals.has(item.canonicalId)
+        if (stolenFromLexicon || winners.has(item.canonicalId)) {
             out[i] = { ...item, canonicalId: null, label: rows[i]?.label ?? item.label }
         } else {
             winners.add(item.canonicalId)
@@ -523,7 +553,12 @@ function applyArbiterResult(
 ): ClassifiedItem {
     if (!result) return fallback(row.label, row.value, section)
     if (result.kind === 'known') {
-        return classifyMatchedItem(result.item, row.value, result.item.id)
+        // Preserve the raw PDF label even when the arbiter promotes the row
+        // to a known canonical. This prevents Gemini-assigned canonicals from
+        // erasing the source label when the underlying concept is compound
+        // (e.g. "Comisión Vacaciones" arbitrated to `vacaciones` — the row
+        // bucket is `vacaciones` but the visible label stays "Comisión Vacaciones").
+        return classifyMatchedItem(result.item, row.value, result.item.id, row.label)
     }
     const cls = result.classification
     const out: ClassifiedItem = {
