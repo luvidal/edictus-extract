@@ -179,6 +179,53 @@ describe('lexicon — public entry (shipped seed)', () => {
         expect(out.haberes[0]).toMatchObject({ canonicalId: null, label: 'Bono Misterioso', value: 1234 })
         expect(out.descuentos[0]).toMatchObject({ canonicalId: null, label: 'Algo Desconocido', value: 999 })
     })
+
+    // Regression: pre-cutover host normalize block carried a synonym
+    // `^descuento seguro de salud$ → Seguro de Salud`. Dropping that synonym
+    // left these labels with no lexicon bridge — they classified as null and
+    // duplicated against canonicalised siblings across months. The aliases
+    // belong on seguro_complementario so raw labels survive, canonicalId
+    // collapses cross-month / saved↔fresh reconciliation, and the classification
+    // (Otro / Fija) matches the rest of the seguro family.
+    it('classifies "Seguro de Salud" as seguro_complementario, raw label preserved', async () => {
+        const out = await classifyLiquidacionRows({
+            haberes: [],
+            descuentos: [{ label: 'Seguro de Salud', value: 43677 }],
+        })
+        expect(out.descuentos[0]).toMatchObject({
+            canonicalId: 'seguro_complementario',
+            label: 'Seguro de Salud',
+            naturaleza: 'Otro',
+            tipoRenta: 'Fija',
+            value: 43677,
+        })
+    })
+
+    it('classifies "Seguro Salud" as seguro_complementario, raw label preserved', async () => {
+        const out = await classifyLiquidacionRows({
+            haberes: [],
+            descuentos: [{ label: 'Seguro Salud', value: 12000 }],
+        })
+        expect(out.descuentos[0]).toMatchObject({
+            canonicalId: 'seguro_complementario',
+            label: 'Seguro Salud',
+            naturaleza: 'Otro',
+            tipoRenta: 'Fija',
+        })
+    })
+
+    it('classifies "Descuento Seguro de Salud" as seguro_complementario, raw label preserved', async () => {
+        const out = await classifyLiquidacionRows({
+            haberes: [],
+            descuentos: [{ label: 'Descuento Seguro de Salud', value: 43677 }],
+        })
+        expect(out.descuentos[0]).toMatchObject({
+            canonicalId: 'seguro_complementario',
+            label: 'Descuento Seguro de Salud',
+            naturaleza: 'Otro',
+            tipoRenta: 'Fija',
+        })
+    })
 })
 
 /**
