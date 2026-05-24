@@ -27,6 +27,8 @@ extractFields(buffer: Buffer, mimetype: string, doctype: string, opts?: ExtractO
 - **opts.generationConfig** — optional Gemini overrides (`temperature`, `topP`, `seed`, `candidateCount`, `thinkingConfig`, ...).
 - **opts.references** — inline few-shot examples (per-call), merged with config-level references.
 
+Model-choice note (2026-05): keep Pro as the extraction correctness baseline for scanned/image-only PDFs and table-heavy Chilean documents, especially liquidaciones, until corpus fixtures prove otherwise. Gemini 3.5 Flash is the first replacement candidate to benchmark; Flash-Lite-class models are acceptable only for low-risk auxiliary analysis, not authoritative extraction, after prior Jogi tests dropped real payroll rows.
+
 Each `ExtractedField` has `{ key, type, value }`; missing values are `null`. `ExtractResult` adds `docdate` (`YYYY-MM-DD` or null) and `usage` (token counts).
 
 ## Configure (host-injected)
