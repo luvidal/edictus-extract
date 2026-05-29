@@ -18,7 +18,6 @@ import type {
     ExtractorConfig,
     ExtractOptions,
     ExtractResult,
-    GeminiCall,
 } from './types'
 
 export type {
