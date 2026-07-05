@@ -1,5 +1,5 @@
 /**
- * Manual corpus harness for @jogi/extract.
+ * Manual corpus harness for @edictus/extract.
  *
  * Walks `FIXTURES_DIR/*.pdf`, runs `extract()` against each one (doctype
  * resolved from a sibling `groundtruth.json`), and prints a per-file summary.

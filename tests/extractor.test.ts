@@ -1,5 +1,5 @@
 /**
- * Smoke tests for @jogi/extract.
+ * Smoke tests for @edictus/extract.
  *
  * No real Gemini call: geminiCall is stubbed to return canned JSON. Validates
  * configure() wiring, prompt assembly, references injection, JSON parsing
@@ -54,7 +54,7 @@ function stubGemini(payload: unknown, usage?: { prompt?: number; cand?: number }
 
 describe('configure', () => {
     it('throws when extract() is called before configure()', async () => {
-        const sym = Symbol.for('@jogi/extract.config')
+        const sym = Symbol.for('@edictus/extract.config')
         ;(globalThis as any)[sym] = undefined
         await expect(extract(Buffer.from('x'), 'image/png', 'cedula-identidad')).rejects.toThrow(/configure/)
     })

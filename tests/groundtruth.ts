@@ -1,5 +1,5 @@
 /**
- * Compare @jogi/extract against DB-stored `ai_fields` ground truth.
+ * Compare @edictus/extract against DB-stored `ai_fields` ground truth.
  *
  *   GEMINI_API_KEY=...   (or GOOGLE_CLOUD_PROJECT + GOOGLE_CLOUD_LOCATION)
  *   JOGI_DOCTYPES=/path/to/doctypes.json
