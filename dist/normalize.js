@@ -24,7 +24,7 @@ var validateNormalizeConfig = (block) => {
     for (const rule of cfg.synonyms ?? []) {
       if (!rule.match.startsWith("^") || !rule.match.endsWith("$")) {
         throw new Error(
-          `@jogi/extract: normalize rule for "${field}" is not anchored: ${rule.match}`
+          `@edictus/extract: normalize rule for "${field}" is not anchored: ${rule.match}`
         );
       }
     }
@@ -35,7 +35,7 @@ var parsePath = (path) => {
   if (listMatch) return { fieldKey: listMatch[1], rowKey: listMatch[2] };
   if (/^[^[.\]]+$/.test(path)) return { fieldKey: path, rowKey: null };
   throw new Error(
-    `@jogi/extract: unsupported normalize path "${path}" \u2014 expected "<field>" or "<field>[].<rowKey>"`
+    `@edictus/extract: unsupported normalize path "${path}" \u2014 expected "<field>" or "<field>[].<rowKey>"`
   );
 };
 var applyNormalizeBlock = (fields, block) => {

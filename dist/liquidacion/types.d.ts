@@ -2,14 +2,14 @@
  * Liquidación-de-sueldo line-item classification types.
  *
  * **Browser-safe — types only.** This module is exported via the
- * `@jogi/extract/liquidacion/types` subpath and must never import a runtime
+ * `@edictus/extract/liquidacion/types` subpath and must never import a runtime
  * module, reference `Buffer`/`process`, or pull in a Gemini SDK. Production
  * consumers (Jogi `app/`, `lib/reports/situacion/*`, etc.) import these types
  * to thread `canonicalId` + classification through `LineItem` / `LabelValue`
  * / `MonthData` without dragging the satellite's server-only runtime into
  * the client bundle.
  *
- * The runtime entry point lives at `@jogi/extract/liquidacion`
+ * The runtime entry point lives at `@edictus/extract/liquidacion`
  * (`classifyLiquidacionRows`); the integrated call site lives inside
  * `extract()` for `doctype === 'liquidaciones-sueldo'` only.
  */

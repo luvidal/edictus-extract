@@ -1,8 +1,8 @@
 /**
- * @jogi/extract — lean prompt-first single-doctype field extractor.
+ * @edictus/extract — lean prompt-first single-doctype field extractor.
  *
  * One Gemini call per file, responseSchema for flat doctypes, local
- * normalization of the JSON payload. Mirrors @jogi/classifier's host-injected
+ * normalization of the JSON payload. Mirrors @edictus/classifier's host-injected
  * dependency pattern: the host owns Gemini auth and passes an already-
  * authenticated `geminiCall`; this package never reads API keys.
  */
@@ -41,7 +41,7 @@ export type { NormalizeRule, NormalizeFieldConfig, NormalizedLabel } from './nor
 import { applyNormalizeBlock, validateNormalizeConfig } from './normalize'
 import { classifyLiquidacionRows } from './liquidacion/lexicon'
 
-const CONFIG_KEY = Symbol.for('@jogi/extract.config')
+const CONFIG_KEY = Symbol.for('@edictus/extract.config')
 const g = globalThis as unknown as Record<symbol, ExtractorConfig | undefined>
 
 export function configure(c: ExtractorConfig): void {
@@ -53,7 +53,7 @@ export function configure(c: ExtractorConfig): void {
 
 function getConfig(): ExtractorConfig {
     const c = g[CONFIG_KEY]
-    if (!c) throw new Error('@jogi/extract: configure({ doctypes, geminiCall }) was not called')
+    if (!c) throw new Error('@edictus/extract: configure({ doctypes, geminiCall }) was not called')
     return c
 }
 
@@ -136,7 +136,7 @@ export async function extract(
 
     const text = stripFences(geminiText(r))
     const parsed = parseJsonLoose(text)
-    if (!parsed) throw new Error('@jogi/extract: Gemini response was not valid JSON')
+    if (!parsed) throw new Error('@edictus/extract: Gemini response was not valid JSON')
 
     const data = (parsed.data ?? parsed) as Record<string, unknown> | null
     const docdate = normalizeDocdate(parsed.docdate)

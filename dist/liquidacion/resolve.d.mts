@@ -2,7 +2,7 @@ import { ItemType, LexiconItem, Lexicon } from './types.mjs';
 
 /**
  * Browser-safe lexicon-alias resolver — maps an arbitrary label back to its
- * lexicon `canonicalId`. Exposed via `@jogi/extract/liquidacion/resolve` for
+ * lexicon `canonicalId`. Exposed via `@edictus/extract/liquidacion/resolve` for
  * host consumers (Jogi) that need to bridge pre-cutover saved row labels to
  * post-cutover canonical rows without round-tripping through the
  * classification pipeline.

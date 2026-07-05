@@ -234,7 +234,7 @@ describe('lexicon — public entry (shipped seed)', () => {
  * These exercise `classifyAndArbitrate` against the same synthetic `TEST_LEXICON`
  * used by the deterministic block. `geminiCall` is stubbed via the satellite's
  * `configure({ doctypes, geminiCall })` channel — the arbiter pulls it through
- * the shared `Symbol.for('@jogi/extract.config')` global. No real Gemini call.
+ * the shared `Symbol.for('@edictus/extract.config')` global. No real Gemini call.
  *
  * Each test calls `clearCache()` first so cross-test state never leaks.
  */

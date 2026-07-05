@@ -25,7 +25,7 @@ import { LiquidacionRowsInput, Lexicon, LiquidacionRowsOutput } from './types.js
 /**
  * Public deterministic-plus-arbiter entry. Same function `extract()` calls
  * internally for `doctype === 'liquidaciones-sueldo'`; also re-exported via
- * `@jogi/extract/liquidacion` for Jogi's one-shot legacy backfill.
+ * `@edictus/extract/liquidacion` for Jogi's one-shot legacy backfill.
  *
  * Pipeline:
  *  1. Deterministic alias match per section (`classifySection`).

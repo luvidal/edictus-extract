@@ -554,7 +554,7 @@ var SECTION_TO_ITEM_TYPE = {
   descuentos: "deduction"
 };
 var ARBITER_MODEL = "gemini-2.5-pro";
-var CONFIG_KEY = /* @__PURE__ */ Symbol.for("@jogi/extract.config");
+var CONFIG_KEY = /* @__PURE__ */ Symbol.for("@edictus/extract.config");
 var INDEX2 = buildAliasIndex(LEXICON);
 function getGeminiCall() {
   const g = globalThis;

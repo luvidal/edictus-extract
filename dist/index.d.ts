@@ -21,10 +21,10 @@ declare function normalizeFields(fields: DoctypeField[], data: Record<string, un
 declare function normalizeDocdate(v: unknown): string | null;
 
 /**
- * @jogi/extract — lean prompt-first single-doctype field extractor.
+ * @edictus/extract — lean prompt-first single-doctype field extractor.
  *
  * One Gemini call per file, responseSchema for flat doctypes, local
- * normalization of the JSON payload. Mirrors @jogi/classifier's host-injected
+ * normalization of the JSON payload. Mirrors @edictus/classifier's host-injected
  * dependency pattern: the host owns Gemini auth and passes an already-
  * authenticated `geminiCall`; this package never reads API keys.
  */

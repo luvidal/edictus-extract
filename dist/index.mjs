@@ -226,7 +226,7 @@ var validateNormalizeConfig = (block) => {
     for (const rule of cfg.synonyms ?? []) {
       if (!rule.match.startsWith("^") || !rule.match.endsWith("$")) {
         throw new Error(
-          `@jogi/extract: normalize rule for "${field}" is not anchored: ${rule.match}`
+          `@edictus/extract: normalize rule for "${field}" is not anchored: ${rule.match}`
         );
       }
     }
@@ -237,7 +237,7 @@ var parsePath = (path) => {
   if (listMatch) return { fieldKey: listMatch[1], rowKey: listMatch[2] };
   if (/^[^[.\]]+$/.test(path)) return { fieldKey: path, rowKey: null };
   throw new Error(
-    `@jogi/extract: unsupported normalize path "${path}" \u2014 expected "<field>" or "<field>[].<rowKey>"`
+    `@edictus/extract: unsupported normalize path "${path}" \u2014 expected "<field>" or "<field>[].<rowKey>"`
   );
 };
 var applyNormalizeBlock = (fields, block) => {
@@ -818,7 +818,7 @@ var SECTION_TO_ITEM_TYPE = {
   descuentos: "deduction"
 };
 var ARBITER_MODEL = "gemini-2.5-pro";
-var CONFIG_KEY = /* @__PURE__ */ Symbol.for("@jogi/extract.config");
+var CONFIG_KEY = /* @__PURE__ */ Symbol.for("@edictus/extract.config");
 var INDEX2 = buildAliasIndex(LEXICON);
 function getGeminiCall() {
   const g2 = globalThis;
@@ -1107,7 +1107,7 @@ function applyArbiterResult(result, row, section) {
 }
 
 // src/index.ts
-var CONFIG_KEY2 = /* @__PURE__ */ Symbol.for("@jogi/extract.config");
+var CONFIG_KEY2 = /* @__PURE__ */ Symbol.for("@edictus/extract.config");
 var g = globalThis;
 function configure(c) {
   for (const dt of Object.values(c.doctypes)) validateNormalizeConfig(dt.normalize);
@@ -1115,7 +1115,7 @@ function configure(c) {
 }
 function getConfig() {
   const c = g[CONFIG_KEY2];
-  if (!c) throw new Error("@jogi/extract: configure({ doctypes, geminiCall }) was not called");
+  if (!c) throw new Error("@edictus/extract: configure({ doctypes, geminiCall }) was not called");
   return c;
 }
 function getDoctypesMap() {
@@ -1176,7 +1176,7 @@ async function extract(buffer, mimetype, doctype, opts = {}) {
   });
   const text = stripFences(geminiText2(r));
   const parsed = parseJsonLoose(text);
-  if (!parsed) throw new Error("@jogi/extract: Gemini response was not valid JSON");
+  if (!parsed) throw new Error("@edictus/extract: Gemini response was not valid JSON");
   const data = parsed.data ?? parsed;
   const docdate = normalizeDocdate(parsed.docdate);
   let fields = applyNormalizeBlock(normalizeFields(dt.fields, data), dt.normalize);
