@@ -1,6 +1,6 @@
-# @jogi/extract
+# @edictus/extract
 
-Lean prompt-first **single-doctype** field extractor for Chilean documents. Sibling satellite to `@jogi/classifier`: that package decides *what* the file is, this one extracts the fields once the doctype is known.
+Lean prompt-first **single-doctype** field extractor for Chilean documents. Sibling satellite to `@edictus/classifier`: that package decides *what* the file is, this one extracts the fields once the doctype is known.
 
 ## How it works
 
@@ -36,7 +36,7 @@ Each `ExtractedField` has `{ key, type, value }`; missing values are `null`. `Ex
 The library has no AI SDK as a runtime dependency. The host provides the doctypes catalog and a Gemini caller:
 
 ```ts
-import { configure, extract } from '@jogi/extract'
+import { configure, extract } from '@edictus/extract'
 import doctypes from './data/doctypes.json'
 import { geminiGenerate } from './lib/server/gemini'
 
@@ -96,15 +96,15 @@ order; whichever fills first wins, capped at 3.
 
 ## Host transition guide
 
-When migrating a host app from inline `Doc2Fields()` to `@jogi/extract`,
+When migrating a host app from inline `Doc2Fields()` to `@edictus/extract`,
 move only the single-doctype extraction prompt + coercion into this package.
 Leave auth, transport, classification, PDF slicing, and post-extraction
 business logic in the host:
 
 ```ts
-// Host app code, not @jogi/extract/src.
+// Host app code, not @edictus/extract/src.
 import { GoogleGenAI } from '@google/genai'
-import { configure as configureExtractor } from '@jogi/extract'
+import { configure as configureExtractor } from '@edictus/extract'
 import doctypes from './data/doctypes.json'
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })

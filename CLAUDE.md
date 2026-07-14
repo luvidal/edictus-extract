@@ -1,4 +1,4 @@
-# @jogi/extract
+# @edictus/extract
 
 Lean AI-first single-doctype field extractor satellite for Jogi. One Gemini call → JSON → per-type coercion → schema-ordered field array.
 
@@ -23,9 +23,9 @@ Lean AI-first single-doctype field extractor satellite for Jogi. One Gemini call
 Scoped algorithm exception for `doctype === 'liquidaciones-sueldo'` **only** — every other doctype keeps the frozen-algorithm rule in clause 4.
 
 - Entry point inside `extract()`: after `applyNormalizeBlock(normalizeFields(...), dt.normalize)`, when `doctype === 'liquidaciones-sueldo'`, the helper `rewriteLiquidacionRows` runs `classifyLiquidacionRows({ haberes, descuentos })` and rewrites those two list fields in place with `canonicalId` + `tipoRenta` / `naturaleza` / `legalType`. No other doctype path is touched; the public `ExtractResult` shape is unchanged.
-- Public server-only entry: `classifyLiquidacionRows` exported from `@jogi/extract/liquidacion` (`src/liquidacion/index.ts`) — the same function `extract()` calls internally, exposed so the host's one-shot legacy `ai_fields` backfill can classify rows without re-running Gemini extraction.
-- Browser-safe types subpath: `@jogi/extract/liquidacion/types` (`TipoRenta`, `Naturaleza`, `LegalType`, `ItemType`, `ClassifiedItem`, …). No runtime imports, no `@google/genai` references; safe for client-side Jogi modules to import.
-- Browser-safe alias resolver: `@jogi/extract/liquidacion/resolve` exports `resolveLabelToCanonicalId(label, itemType)` — pure-data lookup against the same alias index the deterministic matcher uses. Hosts call this to bridge legacy stored labels (e.g. `"AFP"`) to canonical row ids (`afp_cotizacion_obligatoria`) without running classification. No Gemini SDK, no Node-only modules.
+- Public server-only entry: `classifyLiquidacionRows` exported from `@edictus/extract/liquidacion` (`src/liquidacion/index.ts`) — the same function `extract()` calls internally, exposed so the host's one-shot legacy `ai_fields` backfill can classify rows without re-running Gemini extraction.
+- Browser-safe types subpath: `@edictus/extract/liquidacion/types` (`TipoRenta`, `Naturaleza`, `LegalType`, `ItemType`, `ClassifiedItem`, …). No runtime imports, no `@google/genai` references; safe for client-side Jogi modules to import.
+- Browser-safe alias resolver: `@edictus/extract/liquidacion/resolve` exports `resolveLabelToCanonicalId(label, itemType)` — pure-data lookup against the same alias index the deterministic matcher uses. Hosts call this to bridge legacy stored labels (e.g. `"AFP"`) to canonical row ids (`afp_cotizacion_obligatoria`) without running classification. No Gemini SDK, no Node-only modules.
 - Lexicon source: `src/data/liquidacion-lexicon.yaml` (human-edited). The `prebuild` script (`tests/compile-lexicon.ts`, devDep `js-yaml`) compiles it to `src/data/liquidacion-lexicon.generated.ts` — runtime imports the generated TS only. No YAML parser ships in production deps. CI fails if the generated file diverges from the YAML.
 - Alias matching checks strict normalized labels, parametric-stripped labels, and narrow AFP-commission decorations; collision losers keep the raw label with `canonicalId: null` and full classification so host raw-label fallback keying cannot drop values.
 
@@ -56,7 +56,7 @@ Scoped algorithm exception for `doctype === 'liquidaciones-sueldo'` **only** —
 Consumed by Jogi via GitHub SHA pin (never `#main`, never `file:`):
 
 ```json
-"@jogi/extract": "github:luvidal/jogi-extract#<40-char-sha>"
+"@edictus/extract": "github:luvidal/edictus-extract#<40-char-sha>"
 ```
 
 Host wiring lives in a server-only parent init (`lib/server/docsinit.ts` style): `configureExtractor({ doctypes, geminiCall })`. If the host uses `GEMINI_API_KEY` or Vertex auth, wrap it inside the host's `geminiCall`; do not pass raw secrets to this library.
