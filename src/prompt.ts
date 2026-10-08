@@ -10,7 +10,7 @@ const referencesBlock = (refs: unknown[]): string => {
     if (examples.length === 0) return ''
     return [
         '',
-        'Ejemplos del formato exacto que espera la base de datos (Jogi persiste un objeto plano keyed por field key en `documents.files.ai_fields`). Sigue este estilo, NO copies los valores:',
+        'Ejemplos del formato exacto que espera la base de datos (El host persiste un objeto plano keyed por field key en `documents.files.ai_fields`). Sigue este estilo, NO copies los valores:',
         ...examples,
         '',
     ].join('\n')

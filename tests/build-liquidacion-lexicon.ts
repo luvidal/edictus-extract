@@ -1,14 +1,14 @@
 /**
  * Manual lexicon-growth harness for `liquidaciones-sueldo`.
  *
- * Reads anonymized JSONL exported by the Jogi-side
+ * Reads anonymized JSONL exported by the host-side
  * `scripts/export-liquidacion-corpus.ts` and emits a proposed YAML patch
  * (sequence of `- id: ...` items in the lexicon shape) that a human triages
  * and pastes into `src/data/liquidacion-lexicon.yaml`. Production never
  * auto-edits the YAML; this script is offline tooling.
  *
  * Pipeline (per *Corpus Build* in
- * `~/GitHub/jogi/docs/plans/extract-liquidacion-lexicon.md`):
+ * the host's `docs/plans/extract-liquidacion-lexicon.md`):
  *  1. Load JSONL clusters.
  *  2. Group by `{ section, normalizedLabel }`.
  *  3. For each cluster, run the satellite's deterministic matcher. A hit on

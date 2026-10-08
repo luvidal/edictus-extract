@@ -4,7 +4,7 @@
  * **Browser-safe — types only.** This module is exported via the
  * `@edictus/extract/liquidacion/types` subpath and must never import a runtime
  * module, reference `Buffer`/`process`, or pull in a Gemini SDK. Production
- * consumers (Jogi `app/`, `lib/reports/situacion/*`, etc.) import these types
+ * consumers (the host's `app/`, `lib/reports/situacion/*`, etc.) import these types
  * to thread `canonicalId` + classification through `LineItem` / `LabelValue`
  * / `MonthData` without dragging the satellite's server-only runtime into
  * the client bundle.
@@ -56,7 +56,7 @@ interface Lexicon {
  *
  * - `canonicalId` is the lexicon id when the row was matched, `null` when the
  *   row is a collision loser (see *Collision Rule*) or when no canonical match
- *   exists; the absent/`null` form routes Jogi's `createDefaultRows` through
+ *   exists; the absent/`null` form routes the host's `createDefaultRows` through
  *   the raw-label fallback so no value is silently dropped.
  * - `label` is ALWAYS the original raw PDF label, preserved verbatim. Row
  *   identity for the report table comes from `canonicalId`; the visible label

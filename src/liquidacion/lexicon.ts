@@ -418,7 +418,7 @@ export function classifySection(
 /**
  * Public deterministic-plus-arbiter entry. Same function `extract()` calls
  * internally for `doctype === 'liquidaciones-sueldo'`; also re-exported via
- * `@edictus/extract/liquidacion` for Jogi's one-shot legacy backfill.
+ * `@edictus/extract/liquidacion` for the host's one-shot legacy backfill.
  *
  * Pipeline:
  *  1. Deterministic alias match per section (`classifySection`).

@@ -2,7 +2,7 @@
  * Compare @edictus/extract against DB-stored `ai_fields` ground truth.
  *
  *   GEMINI_API_KEY=...   (or GOOGLE_CLOUD_PROJECT + GOOGLE_CLOUD_LOCATION)
- *   JOGI_DOCTYPES=/path/to/doctypes.json
+ *   DOCTYPES_PATH=/path/to/doctypes.json
  *   FIXTURES_DIR=/path/with/{fileId}.pdf + groundtruth.json
  *   npm run groundtruth -- [--only=substr] [--model=gemini-2.5-flash]
  *
@@ -16,8 +16,8 @@ import * as path from 'path'
 import { GoogleGenAI } from '@google/genai'
 import { configure, extract, type DoctypesMap, type GeminiCall, type ExtractedField } from '../src/index'
 
-const DOCTYPES_PATH = process.env.JOGI_DOCTYPES || '/Users/avd/GitHub/jogi/data/doctypes.json'
-const FIXTURES_DIR = process.env.FIXTURES_DIR || '/Users/avd/GitHub/jogi@extract/out/fixtures'
+const DOCTYPES_PATH = process.env.DOCTYPES_PATH || 'doctypes.json'
+const FIXTURES_DIR = process.env.FIXTURES_DIR || 'out/fixtures'
 
 const args = new Map<string, string>()
 for (let i = 2; i < process.argv.length; i++) {

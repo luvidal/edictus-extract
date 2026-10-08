@@ -7,7 +7,7 @@ import { configure, extract, type DoctypesMap, type GeminiCall } from '../src/in
 
 const PORT = Number(process.env.PORT || 4178)
 const ROOT = path.resolve(__dirname)
-const DOCTYPES_PATH = process.env.JOGI_DOCTYPES || '/Users/avd/GitHub/jogi/data/doctypes.json'
+const DOCTYPES_PATH = process.env.DOCTYPES_PATH || 'doctypes.json'
 
 interface UploadItem {
     path?: string
@@ -154,6 +154,6 @@ const server = http.createServer((req, res) => {
 })
 
 server.listen(PORT, () => {
-    console.log(`@jogi/extract playground: http://localhost:${PORT}`)
+    console.log(`@edictus/extract playground: http://localhost:${PORT}`)
     console.log(`doctypes: ${DOCTYPES_PATH}`)
 })

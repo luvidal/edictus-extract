@@ -1,7 +1,7 @@
 /**
  * Server-only public surface for the `@edictus/extract/liquidacion` subpath.
  *
- * This barrel is for the runtime entry point Jogi consumes from the
+ * This barrel is for the runtime entry point the host app consumes from the
  * one-shot backfill script (`scripts/backfill-liquidacion-classification.ts`).
  * The same function is invoked internally by `extract()` for the
  * `liquidaciones-sueldo` doctype.

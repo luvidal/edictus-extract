@@ -2,9 +2,9 @@
  * Unit tests for the label normalization pipeline.
  *
  * Mirrors the consumer-side behavioral spec at
- * `../../jogi/app/reports/situacion/helpers/synonyms.ts` (deletion-on-ship
+ * the host's `app/reports/situacion/helpers/synonyms.ts` (deletion-on-ship
  * target) and the relevant cases from
- * `../../jogi/app/reports/situacion/helpers/rows.test.ts`.
+ * the host's `app/reports/situacion/helpers/rows.test.ts`.
  */
 
 import { describe, it, expect } from 'vitest'

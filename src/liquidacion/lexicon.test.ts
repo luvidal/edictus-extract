@@ -671,7 +671,7 @@ describe('lexicon — D2 parametric-stripped aliases (shipped seed)', () => {
     })
 
     it('Seguro de Cesantía 0,6% resolves deterministically to seguro_cesantia without an arbiter call', async () => {
-        // Jogi's `doctypes.json` `descuentos[].label` normalize block has
+        // the host's `doctypes.json` `descuentos[].label` normalize block has
         // `stripParametric: true`, but it only strips `(...)` and `:N UNIT`
         // suffixes — not bare `0,6%` tails. A row labeled "Seguro de Cesantía
         // 0,6%" reaches the satellite as-is, and the deterministic matcher
