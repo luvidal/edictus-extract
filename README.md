@@ -1,5 +1,7 @@
 # @edictus/extract
 
+**English** · [Español](README.es.md)
+
 Prompt-first field extractor for Chilean documents: payslips, tax folders, CMF
 debt reports, bank statements and more. Given a file and its document type, one
 Gemini call returns typed fields.
